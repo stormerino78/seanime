@@ -1,6 +1,8 @@
 "use client"
+import { useSetOfflineMode } from "@/api/hooks/local.hooks"
 import { SidebarNavbar } from "@/app/(main)/_features/layout/top-navbar"
 import { useServerStatus } from "@/app/(main)/_hooks/use-server-status"
+import { ConfirmationDialog, useConfirmationDialog } from "@/components/shared/confirmation-dialog"
 import { AppSidebar, useAppSidebarContext } from "@/components/ui/app-layout"
 import { Avatar } from "@/components/ui/avatar"
 import { cn } from "@/components/ui/core/styling"
@@ -8,9 +10,8 @@ import { VerticalMenu } from "@/components/ui/vertical-menu"
 import { useThemeSettings } from "@/lib/theme/hooks"
 import { usePathname } from "next/navigation"
 import React from "react"
-import { FaBookReader } from "react-icons/fa"
-import { FiSettings } from "react-icons/fi"
-import { IoLibrary } from "react-icons/io5"
+import { IoCloudyOutline, IoLibraryOutline } from "react-icons/io5"
+import { LuBookOpen, LuSettings } from "react-icons/lu"
 import { PluginSidebarTray } from "../plugin/tray/plugin-sidebar-tray"
 
 
@@ -21,6 +22,8 @@ export function OfflineSidebar() {
 
     const [expandedSidebar, setExpandSidebar] = React.useState(false)
     const isCollapsed = ts.expandSidebarOnHover ? (!ctx.isBelowBreakpoint && !expandedSidebar) : !ctx.isBelowBreakpoint
+
+    const { mutate: setOfflineMode, isPending: isSettingOfflineMode } = useSetOfflineMode()
 
     const pathname = usePathname()
 
@@ -34,6 +37,16 @@ export function OfflineSidebar() {
             setExpandSidebar(false)
         }
     }
+
+    const confirmDialog = useConfirmationDialog({
+        title: "Disable offline mode",
+        description: "Are you sure you want to disable offline mode?",
+        actionText: "Yes",
+        actionIntent: "primary",
+        onConfirm: () => {
+            setOfflineMode({ enabled: false })
+        },
+    })
 
     return (
         <>
@@ -57,7 +70,11 @@ export function OfflineSidebar() {
 
                 <div>
                     <div className="mb-4 p-4 pb-0 flex justify-center w-full">
-                        <img src="/logo.png" alt="logo" className="w-15 h-10" />
+                        <img
+                            src="/seanime-logo.png"
+                            alt="logo"
+                            className="w-15 h-10 transition-all duration-300"
+                        />
                     </div>
                     <VerticalMenu
                         className="px-4"
@@ -65,13 +82,13 @@ export function OfflineSidebar() {
                         itemClass="relative"
                         items={[
                             {
-                                iconType: IoLibrary,
-                                name: "Library",
+                                iconType: IoLibraryOutline,
+                                name: "Anime Library",
                                 href: "/offline",
                                 isCurrent: pathname === "/offline",
                             },
                             ...[serverStatus?.settings?.library?.enableManga && {
-                                iconType: FaBookReader,
+                                iconType: LuBookOpen,
                                 name: "Manga",
                                 href: "/offline/manga",
                                 isCurrent: pathname.startsWith("/offline/manga"),
@@ -96,7 +113,14 @@ export function OfflineSidebar() {
                             onLinkItemClick={() => ctx.setOpen(false)}
                             items={[
                                 {
-                                    iconType: FiSettings,
+                                    iconType: IoCloudyOutline,
+                                    name: "Disable offline mode",
+                                    onClick: () => {
+                                        confirmDialog.open()
+                                    },
+                                },
+                                {
+                                    iconType: LuSettings,
                                     name: "Settings",
                                     href: "/settings",
                                     isCurrent: pathname === ("/settings"),
@@ -107,7 +131,7 @@ export function OfflineSidebar() {
                     <div className="flex w-full gap-2 flex-col">
                         <div
                             className={cn(
-                                "w-full flex p-2.5 pt-1 items-center space-x-2",
+                                "w-full flex p-2 pt-1 items-center space-x-2",
                                 { "hidden": ctx.isBelowBreakpoint },
                             )}
                         >
@@ -120,6 +144,9 @@ export function OfflineSidebar() {
                     </div>
                 </div>
             </AppSidebar>
+            <ConfirmationDialog
+                {...confirmDialog}
+            />
         </>
     )
 

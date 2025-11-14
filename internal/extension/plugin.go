@@ -200,6 +200,8 @@ func (p *PluginPermissions) GetDescription() string {
 				desc.WriteString("Notification: Send system notifications\n")
 			case PluginPermissionDiscord:
 				desc.WriteString("Discord: Set Discord Rich Presence\n")
+			case PluginPermissionTorrentClient:
+				desc.WriteString("Torrent Client: Control torrent clients\n")
 			default:
 				desc.WriteString(string(scope) + "\n")
 			}
@@ -358,6 +360,10 @@ func (m *PluginExtensionImpl) GetLang() string {
 
 func (m *PluginExtensionImpl) GetDescription() string {
 	return m.ext.Description
+}
+
+func (m *PluginExtensionImpl) GetNotes() string {
+	return m.ext.Notes
 }
 
 func (m *PluginExtensionImpl) GetAuthor() string {

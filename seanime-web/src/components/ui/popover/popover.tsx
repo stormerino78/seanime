@@ -12,7 +12,7 @@ import { cn, defineStyleAnatomy } from "../core/styling"
 export const PopoverAnatomy = defineStyleAnatomy({
     root: cva([
         "UI-Popover__root",
-        "z-50 w-72 rounded-[--radius] border bg-[--background] p-4 text-base shadow-sm outline-none",
+        "z-50 w-72 rounded-xl border bg-[--background] p-4 text-base shadow-sm outline-none",
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
         "data-[state=open]:fade-in-50 data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-95",
         "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2",
@@ -35,7 +35,11 @@ export type PopoverProps =
         /**
          * Additional props for the trigger element
          */
-        triggerProps?: React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Trigger>
+        triggerProps?: React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Trigger>,
+        /**
+         * Portal container for custom mounting (useful for fullscreen mode)
+         */
+        portalContainer?: HTMLElement
     }
 
 export const Popover = React.forwardRef<HTMLDivElement, PopoverProps>((props, ref) => {
@@ -51,6 +55,8 @@ export const Popover = React.forwardRef<HTMLDivElement, PopoverProps>((props, re
         className,
         align = "center",
         sideOffset = 8,
+        // Portal
+        portalContainer,
         ...contentProps
     } = props
 
@@ -67,7 +73,7 @@ export const Popover = React.forwardRef<HTMLDivElement, PopoverProps>((props, re
             >
                 {trigger}
             </PopoverPrimitive.Trigger>
-            <PopoverPrimitive.Portal>
+            <PopoverPrimitive.Portal container={portalContainer}>
                 <PopoverPrimitive.Content
                     ref={ref}
                     align={align}

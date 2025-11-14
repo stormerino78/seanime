@@ -5,6 +5,9 @@ import (
 	"net/url"
 	"seanime/internal/extension"
 	"seanime/internal/extension_playground"
+	"seanime/internal/util"
+	"strings"
+	"sync/atomic"
 
 	"github.com/labstack/echo/v4"
 )
@@ -24,12 +27,12 @@ func (h *Handler) HandleFetchExternalExtensionData(c echo.Context) error {
 		return h.RespondWithError(c, err)
 	}
 
-	extension, err := h.App.ExtensionRepository.FetchExternalExtensionData(b.ManifestURI)
+	ext, err := h.App.ExtensionRepository.FetchExternalExtensionData(b.ManifestURI)
 	if err != nil {
 		return h.RespondWithError(c, err)
 	}
 
-	return h.RespondWithData(c, extension)
+	return h.RespondWithData(c, ext)
 }
 
 // HandleInstallExternalExtension
@@ -48,6 +51,30 @@ func (h *Handler) HandleInstallExternalExtension(c echo.Context) error {
 	}
 
 	res, err := h.App.ExtensionRepository.InstallExternalExtension(b.ManifestURI)
+	if err != nil {
+		return h.RespondWithError(c, err)
+	}
+
+	return h.RespondWithData(c, res)
+}
+
+// HandleInstallExternalExtensionRepository
+//
+//	@summary installs the extensions from the given repository uri.
+//	@route /api/v1/extensions/external/install-repository [POST]
+//	@returns extension_repo.RepositoryInstallResponse
+func (h *Handler) HandleInstallExternalExtensionRepository(c echo.Context) error {
+	type body struct {
+		RepositoryURI string `json:"repositoryUri"`
+		Install       bool   `json:"install"`
+	}
+
+	var b body
+	if err := c.Bind(&b); err != nil {
+		return h.RespondWithError(c, err)
+	}
+
+	res, err := h.App.ExtensionRepository.InstallExternalExtensions(b.RepositoryURI, b.Install)
 	if err != nil {
 		return h.RespondWithError(c, err)
 	}
@@ -218,6 +245,16 @@ func (h *Handler) HandleListAnimeTorrentProviderExtensions(c echo.Context) error
 	return h.RespondWithData(c, extensions)
 }
 
+// HandleListCustomSourceExtensions
+//
+//	@summary returns the installed torrent providers.
+//	@route /api/v1/extensions/list/custom-source [GET]
+//	@returns []extension_repo.CustomSourceExtensionItem
+func (h *Handler) HandleListCustomSourceExtensions(c echo.Context) error {
+	extensions := h.App.ExtensionRepository.ListCustomSourceExtensions()
+	return h.RespondWithData(c, extensions)
+}
+
 // HandleGetPluginSettings
 //
 //	@summary returns the plugin settings.
@@ -247,6 +284,8 @@ func (h *Handler) HandleSetPluginSettingsPinnedTrays(c echo.Context) error {
 	return h.RespondWithData(c, true)
 }
 
+var toGrant = atomic.Value{}
+
 // HandleGrantPluginPermissions
 //
 //	@summary grants the plugin permissions to the extension with the given ID.
@@ -254,12 +293,32 @@ func (h *Handler) HandleSetPluginSettingsPinnedTrays(c echo.Context) error {
 //	@returns bool
 func (h *Handler) HandleGrantPluginPermissions(c echo.Context) error {
 	type body struct {
-		ID string `json:"id"`
+		ID       string `json:"id"`
+		ClientId string `json:"clientId"`
 	}
 
 	var b body
 	if err := c.Bind(&b); err != nil {
 		return h.RespondWithError(c, err)
+	}
+
+	if b.ClientId == "" {
+		return h.RespondWithError(c, fmt.Errorf("clientId is required"))
+	}
+
+	if !strings.HasPrefix(b.ClientId, "CODE:") {
+		randomCode := util.RandomStringWithAlphabet(16, "abcdefghijklmoprstuvw123456")
+		toGrant.Store(randomCode)
+		h.App.WSEventManager.SendEventTo(b.ClientId, "grant-plugin-permission-check", b.ID+"$$$"+randomCode)
+		return h.RespondWithData(c, false)
+	}
+
+	if toGrant.Load() == nil {
+		return h.RespondWithError(c, fmt.Errorf("no verification code found"))
+	}
+
+	if code, ok := toGrant.Load().(string); !ok || code != strings.TrimPrefix(b.ClientId, "CODE:") {
+		return h.RespondWithError(c, fmt.Errorf("invalid verification code"))
 	}
 
 	h.App.ExtensionRepository.GrantPluginPermissions(b.ID)
@@ -344,7 +403,7 @@ func (h *Handler) HandleSaveExtensionUserConfig(c echo.Context) error {
 //
 //	@summary returns the marketplace extensions.
 //	@route /api/v1/extensions/marketplace [GET]
-//	@returns []extension_repo.MarketplaceExtension
+//	@returns []extension.Extension
 func (h *Handler) HandleGetMarketplaceExtensions(c echo.Context) error {
 	encodedMarketplaceUrl := c.QueryParam("marketplace")
 	marketplaceUrl := ""

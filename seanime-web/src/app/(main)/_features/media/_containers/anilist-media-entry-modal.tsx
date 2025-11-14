@@ -3,19 +3,21 @@ import { AL_BaseAnime, AL_BaseManga, AL_MediaListStatus, Anime_EntryListData, Ma
 import { useDeleteAnilistListEntry, useEditAnilistListEntry } from "@/api/hooks/anilist.hooks"
 import { useUpdateAnimeEntryRepeat } from "@/api/hooks/anime_entries.hooks"
 import { useCurrentUser } from "@/app/(main)/_hooks/use-server-status"
+import { SeaImage } from "@/components/shared/sea-image"
 import { Button, IconButton } from "@/components/ui/button"
 import { cn } from "@/components/ui/core/styling"
 import { Disclosure, DisclosureContent, DisclosureItem, DisclosureTrigger } from "@/components/ui/disclosure"
 import { defineSchema, Field, Form } from "@/components/ui/form"
-import { Modal } from "@/components/ui/modal"
+import { Modal, ModalProps } from "@/components/ui/modal"
 import { NumberInput } from "@/components/ui/number-input"
+import { Popover, PopoverProps } from "@/components/ui/popover"
 import { Tooltip } from "@/components/ui/tooltip"
 import { normalizeDate } from "@/lib/helpers/date"
 import { getImageUrl } from "@/lib/server/assets"
-import Image from "next/image"
+import { useWindowSize } from "@uidotdev/usehooks"
 import React, { Fragment } from "react"
-import { AiFillEdit } from "react-icons/ai"
 import { BiListPlus, BiPlus, BiStar, BiTrash } from "react-icons/bi"
+import { TbEdit } from "react-icons/tb"
 import { useToggle } from "react-use"
 
 type AnilistMediaEntryModalProps = {
@@ -24,6 +26,7 @@ type AnilistMediaEntryModalProps = {
     media?: AL_BaseAnime | AL_BaseManga
     hideButton?: boolean
     type?: "anime" | "manga"
+    forceModal?: boolean
 }
 
 export const mediaListDataSchema = defineSchema(({ z, presets }) => z.object({
@@ -34,11 +37,56 @@ export const mediaListDataSchema = defineSchema(({ z, presets }) => z.object({
     completedAt: presets.datePicker.nullish(),
 }))
 
+function IsomorphicPopover(props: PopoverProps & ModalProps & { media?: AL_BaseAnime | AL_BaseManga, forceModal?: boolean }) {
+    const { title, children, media, forceModal, ...rest } = props
+    const { width } = useWindowSize()
 
-export const AnilistMediaEntryModal: React.FC<AnilistMediaEntryModalProps> = (props) => {
+    if ((width && width > 1024) && !forceModal) {
+        return <Popover
+            {...rest}
+            className="max-w-5xl !w-full overflow-hidden bg-gray-950/95 backdrop-blur-sm rounded-xl"
+        >
+            <p className="mb-4 font-semibold text-center px-6 line-clamp-1">
+                {media?.title?.userPreferred}
+            </p>
+            {children}
+        </Popover>
+    }
+
+    return <Modal
+        {...rest}
+        title={title}
+        titleClass="text-xl"
+        contentClass="max-w-3xl overflow-hidden"
+    >
+        {media?.bannerImage && <div
+            data-anilist-media-entry-modal-banner-image-container
+            className="h-24 w-full flex-none object-cover object-center overflow-hidden absolute left-0 top-0 z-[0]"
+        >
+            <SeaImage
+                data-anilist-media-entry-modal-banner-image
+                src={getImageUrl(media?.bannerImage!)}
+                alt="banner"
+                fill
+                quality={80}
+                priority
+                sizes="20rem"
+                className="object-cover object-center opacity-5 z-[1]"
+            />
+            <div
+                data-anilist-media-entry-modal-banner-image-bottom-gradient
+                className="z-[5] absolute bottom-0 w-full h-[60%] bg-gradient-to-t from-[--background] to-transparent"
+            />
+        </div>}
+        {children}
+    </Modal>
+}
+
+
+export const AnilistMediaEntryModal = (props: AnilistMediaEntryModalProps) => {
     const [open, toggle] = useToggle(false)
 
-    const { children, media, listData, hideButton, type = "anime", ...rest } = props
+    const { children, media, listData, hideButton, type = "anime", forceModal, ...rest } = props
 
     const user = useCurrentUser()
 
@@ -60,20 +108,10 @@ export const AnilistMediaEntryModal: React.FC<AnilistMediaEntryModalProps> = (pr
     return (
         <>
             {!hideButton && <>
-                {!!listData && <IconButton
-                    data-anilist-media-entry-modal-edit-button
-                    intent="white-subtle"
-                    icon={<AiFillEdit />}
-                    rounded
-                    size="sm"
-                    loading={isPending || isDeleting}
-                    onClick={toggle}
-                />}
-
                 {(!listData) && <Tooltip
                     trigger={<IconButton
                         data-anilist-media-entry-modal-add-button
-                        intent="primary-subtle"
+                        intent="gray-subtle"
                         icon={<BiPlus />}
                         rounded
                         size="sm"
@@ -94,33 +132,26 @@ export const AnilistMediaEntryModal: React.FC<AnilistMediaEntryModalProps> = (pr
                 </Tooltip>}
             </>}
 
-            <Modal
+            {!!listData && <IsomorphicPopover
+                forceModal={forceModal}
                 open={open}
                 onOpenChange={o => toggle(o)}
                 title={media?.title?.userPreferred ?? undefined}
-                titleClass="text-xl"
-                contentClass="max-w-3xl overflow-hidden"
+                trigger={<span>
+                    {!hideButton && <>
+                        {!!listData && <IconButton
+                            data-anilist-media-entry-modal-edit-button
+                            intent="white-subtle"
+                            icon={<TbEdit />}
+                            rounded
+                            size="sm"
+                            loading={isPending || isDeleting}
+                            onClick={toggle}
+                        />}
+                    </>}
+                </span>}
+                media={media}
             >
-
-                {media?.bannerImage && <div
-                    data-anilist-media-entry-modal-banner-image-container
-                    className="h-24 w-full flex-none object-cover object-center overflow-hidden absolute left-0 top-0 z-[-1]"
-                >
-                    <Image
-                        data-anilist-media-entry-modal-banner-image
-                        src={getImageUrl(media?.bannerImage!)}
-                        alt="banner"
-                        fill
-                        quality={80}
-                        priority
-                        sizes="20rem"
-                        className="object-cover object-center opacity-15"
-                    />
-                    <div
-                        data-anilist-media-entry-modal-banner-image-bottom-gradient
-                        className="z-[5] absolute bottom-0 w-full h-[60%] bg-gradient-to-t from-[--background] to-transparent"
-                    />
-                </div>}
 
                 {(!!listData) && <Form
                     data-anilist-media-entry-modal-form
@@ -154,9 +185,9 @@ export const AnilistMediaEntryModal: React.FC<AnilistMediaEntryModalProps> = (pr
                         })
                     }}
                     className={cn(
-                        {
-                            "mt-8": !!media?.bannerImage,
-                        },
+                        // {
+                        //     "mt-8": !!media?.bannerImage,
+                        // },
                     )}
                     onError={console.log}
                     defaultValues={{
@@ -289,7 +320,7 @@ export const AnilistMediaEntryModal: React.FC<AnilistMediaEntryModalProps> = (pr
                     </div>
                 </Form>}
 
-            </Modal>
+            </IsomorphicPopover>}
         </>
     )
 

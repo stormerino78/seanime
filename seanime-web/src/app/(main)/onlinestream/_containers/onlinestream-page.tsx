@@ -2,9 +2,12 @@ import { Anime_Entry } from "@/api/generated/types"
 import { serverStatusAtom } from "@/app/(main)/_atoms/server-status.atoms"
 import { EpisodeGridItem } from "@/app/(main)/_features/anime/_components/episode-grid-item"
 import { MediaEpisodeInfoModal } from "@/app/(main)/_features/media/_components/media-episode-info-modal"
+import { useNakamaStatus } from "@/app/(main)/_features/nakama/nakama-manager"
+import { usePlaylistManager } from "@/app/(main)/_features/playlists/_containers/global-playlist-manager"
 import { SeaMediaPlayer } from "@/app/(main)/_features/sea-media-player/sea-media-player"
 import { SeaMediaPlayerLayout } from "@/app/(main)/_features/sea-media-player/sea-media-player-layout"
 import { SeaMediaPlayerProvider } from "@/app/(main)/_features/sea-media-player/sea-media-player-provider"
+import { EpisodePillsGrid } from "@/app/(main)/onlinestream/_components/episode-pills-grid"
 import {
     OnlinestreamParametersButton,
     OnlinestreamProviderButton,
@@ -15,17 +18,20 @@ import { OnlinestreamManualMappingModal } from "@/app/(main)/onlinestream/_conta
 import { useHandleOnlinestream } from "@/app/(main)/onlinestream/_lib/handle-onlinestream"
 import { OnlinestreamManagerProvider } from "@/app/(main)/onlinestream/_lib/onlinestream-manager"
 import { LuffyError } from "@/components/shared/luffy-error"
-import { IconButton } from "@/components/ui/button"
+import { Button, IconButton } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { logger } from "@/lib/helpers/debug"
 import { isHLSProvider, MediaPlayerInstance, MediaProviderAdapter, MediaProviderChangeEvent, MediaProviderSetupEvent } from "@vidstack/react"
+import { AxiosError } from "axios"
 import HLS from "hls.js"
 import { atom } from "jotai/index"
-import { useAtomValue } from "jotai/react"
+import { useAtom, useAtomValue } from "jotai/react"
+import { atomWithStorage } from "jotai/utils"
+import { AnimatePresence, motion } from "motion/react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import React from "react"
+import { BsFillGrid3X3GapFill } from "react-icons/bs"
 import { FaSearch } from "react-icons/fa"
-import { useUpdateEffect } from "react-use"
 import "@/app/vidstack-theme.css"
 import "@vidstack/react/player/styles/default/layouts/video.css"
 import { PluginEpisodeGridItemMenuItems } from "../../_features/plugin/actions/plugin-actions"
@@ -41,6 +47,9 @@ type ProgressItem = {
 }
 const progressItemAtom = atom<ProgressItem | undefined>(undefined)
 
+// Episode view mode atom
+const episodeViewModeAtom = atomWithStorage<"list" | "grid">("sea-onlinestream-episode-view-mode", "list")
+
 export function OnlinestreamPage({ animeEntry, animeEntryLoading, hideBackButton }: OnlinestreamPageProps) {
     const serverStatus = useAtomValue(serverStatusAtom)
     const router = useRouter()
@@ -50,6 +59,9 @@ export function OnlinestreamPage({ animeEntry, animeEntryLoading, hideBackButton
     const urlEpNumber = searchParams.get("episode")
 
     const ref = React.useRef<MediaPlayerInstance>(null)
+    const [episodeViewMode, setEpisodeViewMode] = useAtom(episodeViewModeAtom)
+
+    const media = animeEntry?.media
 
     const {
         episodes,
@@ -60,12 +72,13 @@ export function OnlinestreamPage({ animeEntry, animeEntryLoading, hideBackButton
         onCanPlay: _onCanPlay,
         onFatalError,
         loadPage,
-        media,
+        // media,
         episodeSource,
         currentEpisodeNumber,
         handleChangeEpisodeNumber,
         episodeLoading,
         isErrorEpisodeSource,
+        errorEpisodeSource,
         isErrorProvider,
         provider,
     } = useHandleOnlinestream({
@@ -73,50 +86,90 @@ export function OnlinestreamPage({ animeEntry, animeEntryLoading, hideBackButton
         ref,
     })
 
-    const maxEp = media?.nextAiringEpisode?.episode ? (media?.nextAiringEpisode?.episode - 1) : media?.episodes || 0
     const progress = animeEntry?.listData?.progress ?? 0
+
+    const nakamaStatus = useNakamaStatus()
+    const { currentPlaylist, playEpisode: playPlaylistEpisode, nextPlaylistEpisode, prevPlaylistEpisode } = usePlaylistManager()
 
     /**
      * Set episode number on mount
      */
     const firstRenderRef = React.useRef(true)
-    useUpdateEffect(() => {
+    React.useEffect(() => {
+        // Do not auto set the episode number if the user is in a watch party and is not the host
+        if (!!nakamaStatus?.currentWatchPartySession && !nakamaStatus.isHost) return
+
         if (!!media && firstRenderRef.current && !!episodes) {
-            const maxEp = media?.nextAiringEpisode?.episode ? (media?.nextAiringEpisode?.episode - 1) : media?.episodes || 0
-            const _urlEpNumber = urlEpNumber ? Number(urlEpNumber) : undefined
+            const episodeNumberFromURL = urlEpNumber ? Number(urlEpNumber) : undefined
             const progress = animeEntry?.listData?.progress ?? 0
-            let nextProgressNumber = maxEp ? (progress + 1 < maxEp ? progress + 1 : maxEp) : progress + 1
-            if (!episodes.find(e => e.number === nextProgressNumber)) {
-                nextProgressNumber = 1
+            let episodeNumber = 1
+            const episodeToWatch = episodes.find(e => e.number === progress + 1)
+            if (episodeToWatch) {
+                episodeNumber = episodeToWatch.number
             }
-            handleChangeEpisodeNumber(_urlEpNumber || nextProgressNumber || 1)
-            logger("ONLINESTREAM").info("Setting episode number to", _urlEpNumber || nextProgressNumber || 1)
+            handleChangeEpisodeNumber(episodeNumberFromURL || episodeNumber || 1)
+            logger("ONLINESTREAM").info("Setting episode number to", episodeNumberFromURL || episodeNumber || 1)
             firstRenderRef.current = false
         }
-    }, [episodes])
+    }, [episodes, media, animeEntry?.listData, urlEpNumber, currentPlaylist])
 
+    /**
+     * Set episode number on update
+     */
     React.useEffect(() => {
-        const t = setTimeout(() => {
-            if (urlEpNumber) {
-                router.replace(pathname + `?id=${mediaId}`)
-            }
-        }, 500)
+        // Do not auto set the episode number if the user is in a watch party and is not the host
+        if (!!nakamaStatus?.currentWatchPartySession && !nakamaStatus.isHost) return
 
-        return () => clearTimeout(t)
-    }, [mediaId])
+        if (firstRenderRef.current) return
+
+        if (!!media && !!episodes) {
+            const episodeNumberFromURL = urlEpNumber ? Number(urlEpNumber) : undefined
+            if (episodeNumberFromURL) {
+                handleChangeEpisodeNumber(episodeNumberFromURL)
+                logger("ONLINESTREAM").info("Changing episode number to", episodeNumberFromURL)
+            }
+        }
+    }, [urlEpNumber])
+
+    // React.useEffect(() => {
+    //     const t = setTimeout(() => {
+    //         if (urlEpNumber) {
+    //             router.replace(pathname + `?id=${mediaId}`)
+    //         }
+    //     }, 500)
+    //
+    //     return () => clearTimeout(t)
+    // }, [mediaId])
+
+    function onCanPlay() {
+        if (urlEpNumber) {
+            router.replace(pathname + `?id=${mediaId}`)
+        }
+        _onCanPlay()
+    }
 
     const episodeTitle = episodes?.find(e => e.number === currentEpisodeNumber)?.title
 
+    const hasNextEpisode = currentPlaylist ? !!nextPlaylistEpisode : !!episodes?.find(e => e.number === currentEpisodeNumber + 1)
+    const hasPreviousEpisode = currentPlaylist ? !!prevPlaylistEpisode : !!episodes?.find(e => e.number === currentEpisodeNumber - 1)
+
     function goToNextEpisode() {
-        if (currentEpisodeNumber < maxEp) {
-            // check if the episode exists
-            if (episodes?.find(e => e.number === currentEpisodeNumber + 1)) {
-                handleChangeEpisodeNumber(currentEpisodeNumber + 1)
-            }
+        if (currentPlaylist) {
+            playPlaylistEpisode("next", true)
+            return
+        }
+        // check if the episode exists
+        if (episodes?.find(e => e.number === currentEpisodeNumber + 1)) {
+            handleChangeEpisodeNumber(currentEpisodeNumber + 1)
         }
     }
 
     function goToPreviousEpisode() {
+        if (currentPlaylist) {
+            playPlaylistEpisode("previous", true)
+            return
+        }
+
         if (currentEpisodeNumber > 1) {
             // check if the episode exists
             if (episodes?.find(e => e.number === currentEpisodeNumber - 1)) {
@@ -168,7 +221,7 @@ export function OnlinestreamPage({ animeEntry, animeEntryLoading, hideBackButton
         return () => clearTimeout(t)
     }, [opts.hasCustomQualities, url, episodeLoading])
 
-    if (!loadPage || !media || animeEntryLoading) return <div data-onlinestream-page-loading-container className="space-y-4">
+    if (!media || animeEntryLoading) return <div data-onlinestream-page-loading-container className="space-y-4">
         <div className="flex gap-4 items-center relative">
             <Skeleton className="h-12" />
         </div>
@@ -199,35 +252,52 @@ export function OnlinestreamPage({ animeEntry, animeEntryLoading, hideBackButton
                     title={media?.title?.userPreferred}
                     hideBackButton={hideBackButton}
                     episodes={episodes}
+                    loading={loadPage}
                     leftHeaderActions={<>
-                        {animeEntry && <OnlinestreamManualMappingModal entry={animeEntry}>
-                            <IconButton
+                        {!!mediaId && <OnlinestreamParametersButton mediaId={Number(mediaId)} />}
+                        {(animeEntry && !!provider) && <OnlinestreamManualMappingModal entry={animeEntry}>
+                            <Button
                                 size="sm"
                                 intent="gray-basic"
-                                icon={<FaSearch />}
-                            />
+                                className="rounded-full"
+                                leftIcon={<FaSearch className="" />}
+                            >
+                                Manual match
+                            </Button>
                         </OnlinestreamManualMappingModal>}
                         <SwitchSubOrDubButton />
-                        {!!mediaId && <OnlinestreamParametersButton mediaId={Number(mediaId)} />}
-                        <div className="flex flex-1"></div>
+                        <div className="hidden lg:flex flex-1"></div>
+                    </>}
+                    rightHeaderActions={<>
+                        <IconButton
+                            size="sm"
+                            intent={episodeViewMode === "list" ? "gray-basic" : "white-subtle"}
+                            icon={<BsFillGrid3X3GapFill />}
+                            onClick={() => setEpisodeViewMode(prev => prev === "list" ? "grid" : "list")}
+                            title={episodeViewMode === "list" ? "Switch to grid view" : "Switch to list view"}
+                        />
                     </>}
                     mediaPlayer={!provider ? (
                         <div className="flex items-center flex-col justify-center w-full h-full">
                             <LuffyError title="No provider selected" />
-                            {!!mediaId && <OnlinestreamParametersButton mediaId={Number(mediaId)} />}
+                            <div className="flex gap-2">
+                                {!!mediaId && <OnlinestreamParametersButton mediaId={Number(mediaId)} />}
+                            </div>
                         </div>
                     ) : isErrorProvider ? <LuffyError title="Provider error" /> : (
                         <SeaMediaPlayer
                             url={url}
                             poster={currentEpisodeDetails?.image || media.coverImage?.extraLarge}
-                            isLoading={episodeLoading}
-                            isPlaybackError={isErrorEpisodeSource}
+                            isLoading={!loadPage || episodeLoading}
+                            isPlaybackError={isErrorEpisodeSource
+                                ? (errorEpisodeSource as AxiosError<{ error: string }>)?.response?.data?.error
+                                : undefined}
                             playerRef={ref}
                             onProviderChange={onProviderChange}
                             onProviderSetup={onProviderSetup}
-                            onCanPlay={_onCanPlay}
-                            onGoToNextEpisode={goToNextEpisode}
-                            onGoToPreviousEpisode={goToPreviousEpisode}
+                            onCanPlay={onCanPlay}
+                            onGoToNextEpisode={hasNextEpisode ? goToNextEpisode : undefined}
+                            onGoToPreviousEpisode={hasPreviousEpisode ? goToPreviousEpisode : undefined}
                             tracks={episodeSource?.subtitles?.map((sub) => ({
                                 id: sub.language,
                                 label: sub.language,
@@ -253,41 +323,65 @@ export function OnlinestreamPage({ animeEntry, animeEntryLoading, hideBackButton
                         />
                     )}
                     episodeList={<>
-                        {(!episodes?.length && !loadPage) && <p>
-                            No episodes found
-                        </p>}
-                        {episodes?.filter(Boolean)?.sort((a, b) => a!.number - b!.number)?.map((episode, idx) => {
-                            return (
-                                <EpisodeGridItem
-                                    key={idx + (episode.title || "") + episode.number}
-                                    id={`episode-${String(episode.number)}`}
-                                    onClick={() => handleChangeEpisodeNumber(episode.number)}
-                                    title={media.format === "MOVIE" ? "Complete movie" : `Episode ${episode.number}`}
-                                    episodeTitle={episode.title}
-                                    description={episode.description ?? undefined}
-                                    image={episode.image}
-                                    media={media}
-                                    isSelected={episode.number === currentEpisodeNumber}
-                                    disabled={episodeLoading}
-                                    isWatched={progress ? episode.number <= progress : undefined}
-                                    className="flex-none w-full"
-                                    isFiller={episode.isFiller}
-                                    episodeNumber={episode.number}
-                                    progressNumber={episode.number}
-                                    action={<>
-                                        <MediaEpisodeInfoModal
-                                            title={media.format === "MOVIE" ? "Complete movie" : `Episode ${episode.number}`}
-                                            image={episode?.image}
-                                            episodeTitle={episode.title}
-                                            summary={episode?.description}
-                                        />
+                        <AnimatePresence mode="wait" initial={false}>
+                            {episodeViewMode === "list" ? (
+                                <motion.div
+                                    key="list-view"
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -20 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="space-y-3"
+                                >
+                                    {episodes?.filter(Boolean)?.sort((a, b) => a!.number - b!.number)?.map((episode, idx) => {
+                                        return (
+                                            <EpisodeGridItem
+                                                key={idx + (episode.title || "") + episode.number}
+                                                id={`episode-${String(episode.number)}`}
+                                                onClick={() => handleChangeEpisodeNumber(episode.number)}
+                                                title={media.format === "MOVIE" ? "Complete movie" : `Episode ${episode.number}`}
+                                                episodeTitle={episode.title}
+                                                description={episode.description ?? undefined}
+                                                image={episode.image}
+                                                media={media}
+                                                isSelected={episode.number === currentEpisodeNumber}
+                                                disabled={episodeLoading}
+                                                isWatched={progress ? episode.number <= progress : undefined}
+                                                className="flex-none w-full"
+                                                isFiller={episode.isFiller}
+                                                episodeNumber={episode.number}
+                                                progressNumber={episode.number}
+                                                action={<>
+                                                    <MediaEpisodeInfoModal
+                                                        title={media.format === "MOVIE" ? "Complete movie" : `Episode ${episode.number}`}
+                                                        image={episode?.image}
+                                                        episodeTitle={episode.title}
+                                                        summary={episode?.description}
+                                                    />
 
-                                        <PluginEpisodeGridItemMenuItems isDropdownMenu={true} type="onlinestream" episode={episode} />
-                                    </>}
+                                                    <PluginEpisodeGridItemMenuItems isDropdownMenu={true} type="onlinestream" episode={episode} />
+                                                </>}
+                                            />
+                                        )
+                                    })}
+                                    {!!episodes?.length && <p className="text-center text-[--muted] py-2">End</p>}
+                                </motion.div>
+                            ) : (
+                                <EpisodePillsGrid
+                                    key="grid-view"
+                                    episodes={episodes?.map(ep => ({
+                                        number: ep.number,
+                                        title: ep.title,
+                                        isFiller: ep.isFiller,
+                                    })) || []}
+                                    currentEpisodeNumber={currentEpisodeNumber}
+                                    onEpisodeSelect={handleChangeEpisodeNumber}
+                                    progress={progress}
+                                    disabled={episodeLoading}
+                                    getEpisodeId={(ep) => `episode-${ep.number}`}
                                 />
-                            )
-                        })}
-                        <p className="text-center text-[--muted] py-2">End</p>
+                            )}
+                        </AnimatePresence>
                     </>}
                 />
             </OnlinestreamManagerProvider>

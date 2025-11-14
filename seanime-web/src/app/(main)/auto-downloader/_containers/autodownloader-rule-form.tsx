@@ -11,13 +11,14 @@ import { useLibraryCollection } from "@/app/(main)/_hooks/anime-library-collecti
 import { useServerStatus } from "@/app/(main)/_hooks/use-server-status"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { CloseButton, IconButton } from "@/components/ui/button"
+import { Combobox } from "@/components/ui/combobox"
 import { cn } from "@/components/ui/core/styling"
 import { DangerZone, defineSchema, Field, Form, InferType } from "@/components/ui/form"
-import { Select } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { TextInput } from "@/components/ui/text-input"
 import { upath } from "@/lib/helpers/upath"
 import { uniq } from "lodash"
+import capitalize from "lodash/capitalize"
 import Image from "next/image"
 import React from "react"
 import { useFieldArray, UseFormReturn, useWatch } from "react-hook-form"
@@ -63,9 +64,10 @@ export function AutoDownloaderRuleForm(props: AutoDownloaderRuleFormProps) {
         return userMedia ?? []
     }, [userMedia])
 
-    // Upcoming & airing media
     const notFinishedMedia = React.useMemo(() => {
-        return allMedia.filter(media => media.status !== "FINISHED")
+        // return allMedia.filter(media => media.status !== "FINISHED")
+        // Note: return all
+        return allMedia
     }, [allMedia])
 
     const { mutate: createRule, isPending: creatingRule } = useCreateAutoDownloaderRule()
@@ -223,32 +225,49 @@ export function RuleFormFields(props: RuleFormFieldsProps) {
                 )}
             >
                 {!mediaId && <div className="flex gap-4 items-end">
-                    <div
-                        className="w-[6rem] h-[6rem] rounded-[--radius] flex-none object-cover object-center overflow-hidden relative bg-gray-800"
-                    >
-                        {!!selectedMedia?.coverImage?.large && <Image
-                            src={selectedMedia.coverImage.large}
-                            alt="banner"
-                            fill
-                            quality={80}
-                            priority
-                            sizes="20rem"
-                            className="object-cover object-center"
-                        />}
-                    </div>
-                    <Select
+                    {/*<div*/}
+                    {/*    className="w-[6rem] h-[6rem] rounded-[--radius] flex-none object-cover object-center overflow-hidden relative bg-gray-800"*/}
+                    {/*>*/}
+                    {/*    {!!selectedMedia?.coverImage?.large && <SeaImage*/}
+                    {/*        src={selectedMedia.coverImage.large}*/}
+                    {/*        alt="banner"*/}
+                    {/*        fill*/}
+                    {/*        quality={80}*/}
+                    {/*        priority*/}
+                    {/*        sizes="20rem"*/}
+                    {/*        className="object-cover object-center"*/}
+                    {/*    />}*/}
+                    {/*</div>*/}
+                    <Combobox
                         name="mediaId"
                         label="Library Entry"
-                        options={notFinishedMedia.map(media => ({ label: media.title?.userPreferred || "N/A", value: String(media.id) }))
-                            .toSorted((a, b) => a.label.localeCompare(b.label))}
-                        value={String(form_mediaId)}
-                        onValueChange={(v) => form.setValue("mediaId", parseInt(v))}
-                        help={!mediaId ? "The anime must be airing or upcoming" : undefined}
+                        options={notFinishedMedia.map(media => ({
+                                label: <div className="flex items-center gap-2">
+                                    <div className="size-10 rounded-full bg-gray-800 flex items-center justify-center relative overflow-hidden flex-none">
+                                        <Image
+                                            src={media.coverImage?.medium ?? "/no-cover.png"}
+                                            alt="cover"
+                                            sizes="2rem"
+                                            fill
+                                            className="object-cover object-center"
+                                        />
+                                    </div>
+                                    <p>{media.title?.userPreferred || "N/A"}</p>
+                                    <p className="text-[--muted] text-sm">{capitalize(media.status)?.replaceAll("_", " ")}</p>
+                                </div>,
+                                value: String(media.id),
+                                textValue: media.title?.userPreferred || "N/A",
+                            }))
+                            .toSorted((a, b) => a.textValue.localeCompare(b.textValue))}
+                        value={[String(form_mediaId)]}
+                        onValueChange={(v) => form.setValue("mediaId", v[0] ? parseInt(v[0]) : notFinishedMedia[0]?.id)}
                         disabled={type === "edit" || !!mediaId}
+                        multiple={false}
+                        emptyMessage="No media found"
                     />
                 </div>}
 
-                {selectedMedia?.status === "FINISHED" && <div className="py-2 text-red-300 text-center">This anime is no longer airing</div>}
+                {selectedMedia?.status === "FINISHED" && <div className="py-2 text-[--orange] text-center">No longer airing</div>}
 
                 <Field.DirectorySelector
                     name="destination"
@@ -453,7 +472,7 @@ export function TextArrayField<T extends string | number>(props: TextArrayFieldP
                 </React.Fragment>
             ))}
             <IconButton
-                intent="success"
+                intent="success-glass"
                 className="rounded-full"
                 onClick={() => append(props.type === "number" ? 1 : "")}
                 icon={<BiPlus />}

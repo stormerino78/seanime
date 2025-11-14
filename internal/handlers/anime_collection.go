@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"errors"
+	"seanime/internal/api/anilist"
 	"seanime/internal/database/db_bridge"
 	"seanime/internal/library/anime"
 	"seanime/internal/torrentstream"
 	"seanime/internal/util"
+	"seanime/internal/util/result"
+	"time"
 
 	"github.com/labstack/echo/v4"
 )
@@ -30,12 +33,60 @@ func (h *Handler) HandleGetLibraryCollection(c echo.Context) error {
 		return h.RespondWithData(c, &anime.LibraryCollection{})
 	}
 
-	lfs, _, err := db_bridge.GetLocalFiles(h.App.Database)
-	if err != nil {
-		return h.RespondWithError(c, err)
+	originalAnimeCollection := animeCollection
+
+	var lfs []*anime.LocalFile
+	nakamaLibrary, fromNakama := h.App.NakamaManager.GetHostAnimeLibrary(c.Request().Context())
+	if fromNakama {
+		// Save the original anime collection to restore it later
+		originalAnimeCollection = animeCollection.Copy()
+		lfs = nakamaLibrary.LocalFiles
+		// Merge missing media entries into the collection
+		currentMediaIds := make(map[int]struct{})
+		for _, list := range animeCollection.MediaListCollection.GetLists() {
+			for _, entry := range list.GetEntries() {
+				currentMediaIds[entry.GetMedia().GetID()] = struct{}{}
+			}
+		}
+
+		nakamaMediaIds := make(map[int]struct{})
+		for _, lf := range lfs {
+			if lf.MediaId > 0 {
+				nakamaMediaIds[lf.MediaId] = struct{}{}
+			}
+		}
+
+		missingMediaIds := make(map[int]struct{})
+		for _, lf := range lfs {
+			if lf.MediaId > 0 {
+				if _, ok := currentMediaIds[lf.MediaId]; !ok {
+					missingMediaIds[lf.MediaId] = struct{}{}
+				}
+			}
+		}
+
+		for _, list := range nakamaLibrary.AnimeCollection.MediaListCollection.GetLists() {
+			for _, entry := range list.GetEntries() {
+				if _, ok := missingMediaIds[entry.GetMedia().GetID()]; ok {
+					// create a new entry with blank list data
+					newEntry := &anilist.AnimeListEntry{
+						ID:     entry.GetID(),
+						Media:  entry.GetMedia(),
+						Status: &[]anilist.MediaListStatus{anilist.MediaListStatusPlanning}[0],
+					}
+					animeCollection.MediaListCollection.AddEntryToList(newEntry, anilist.MediaListStatusPlanning)
+				}
+			}
+		}
+
+	} else {
+		lfs, _, err = db_bridge.GetLocalFiles(h.App.Database)
+		if err != nil {
+			return h.RespondWithError(c, err)
+		}
 	}
 
-	libraryCollection, err := anime.NewLibraryCollection(&anime.NewLibraryCollectionOptions{
+	libraryCollection, err := anime.NewLibraryCollection(c.Request().Context(), &anime.NewLibraryCollectionOptions{
 		AnimeCollection:  animeCollection,
 		Platform:         h.App.AnilistPlatform,
 		LocalFiles:       lfs,
@@ -45,14 +96,40 @@ func (h *Handler) HandleGetLibraryCollection(c echo.Context) error {
 		return h.RespondWithError(c, err)
 	}
 
-	if (h.App.SecondarySettings.Torrentstream != nil && h.App.SecondarySettings.Torrentstream.Enabled && h.App.SecondarySettings.Torrentstream.IncludeInLibrary) ||
-		(h.App.Settings.GetLibrary() != nil && h.App.Settings.GetLibrary().EnableOnlinestream && h.App.Settings.GetLibrary().IncludeOnlineStreamingInLibrary) ||
-		(h.App.SecondarySettings.Debrid != nil && h.App.SecondarySettings.Debrid.Enabled && h.App.SecondarySettings.Debrid.IncludeDebridStreamInLibrary) {
-		h.App.TorrentstreamRepository.HydrateStreamCollection(&torrentstream.HydrateStreamCollectionOptions{
-			AnimeCollection:   animeCollection,
-			LibraryCollection: libraryCollection,
-			MetadataProvider:  h.App.MetadataProvider,
-		})
+	// Restore the original anime collection if it was modified
+	if fromNakama {
+		*animeCollection = *originalAnimeCollection
+	}
+
+	if !fromNakama {
+		if (h.App.SecondarySettings.Torrentstream != nil && h.App.SecondarySettings.Torrentstream.Enabled && h.App.SecondarySettings.Torrentstream.IncludeInLibrary) ||
+			(h.App.Settings.GetLibrary() != nil && h.App.Settings.GetLibrary().EnableOnlinestream && h.App.Settings.GetLibrary().IncludeOnlineStreamingInLibrary) ||
+			(h.App.SecondarySettings.Debrid != nil && h.App.SecondarySettings.Debrid.Enabled && h.App.SecondarySettings.Debrid.IncludeDebridStreamInLibrary) {
+			h.App.TorrentstreamRepository.HydrateStreamCollection(&torrentstream.HydrateStreamCollectionOptions{
+				AnimeCollection:   animeCollection,
+				LibraryCollection: libraryCollection,
+				MetadataProvider:  h.App.MetadataProvider,
+			})
+		}
+	}
+
+	// Add and remove necessary metadata when hydrating from Nakama
+	if fromNakama {
+		for _, ep := range libraryCollection.ContinueWatchingList {
+			ep.IsNakamaEpisode = true
+		}
+		for _, list := range libraryCollection.Lists {
+			for _, entry := range list.Entries {
+				if entry.EntryLibraryData == nil {
+					continue
+				}
+				entry.NakamaEntryLibraryData = &anime.NakamaEntryLibraryData{
+					UnwatchedCount: entry.EntryLibraryData.UnwatchedCount,
+					MainFileCount:  entry.EntryLibraryData.MainFileCount,
+				}
+				entry.EntryLibraryData = nil
+			}
+		}
 	}
 
 	// Hydrate total library size
@@ -61,6 +138,44 @@ func (h *Handler) HandleGetLibraryCollection(c echo.Context) error {
 	}
 
 	return h.RespondWithData(c, libraryCollection)
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------------------------
+
+var animeScheduleCache = result.NewCache[int, []*anime.ScheduleItem]()
+
+// HandleGetAnimeCollectionSchedule
+//
+//	@summary returns anime collection schedule
+//	@desc This is used by the "Schedule" page to display the anime schedule.
+//	@route /api/v1/library/schedule [GET]
+//	@returns []anime.ScheduleItem
+func (h *Handler) HandleGetAnimeCollectionSchedule(c echo.Context) error {
+
+	// Invalidate the cache when the Anilist collection is refreshed
+	h.App.AddOnRefreshAnilistCollectionFunc("HandleGetAnimeCollectionSchedule", func() {
+		animeScheduleCache.Clear()
+	})
+
+	if ret, ok := animeScheduleCache.Get(1); ok {
+		return h.RespondWithData(c, ret)
+	}
+
+	animeSchedule, err := h.App.AnilistPlatform.GetAnimeAiringSchedule(c.Request().Context())
+	if err != nil {
+		return h.RespondWithError(c, err)
+	}
+
+	animeCollection, err := h.App.GetAnimeCollection(false)
+	if err != nil {
+		return h.RespondWithError(c, err)
+	}
+
+	ret := anime.GetScheduleItems(animeSchedule, animeCollection)
+
+	animeScheduleCache.SetT(1, ret, 1*time.Hour)
+
+	return h.RespondWithData(c, ret)
 }
 
 // HandleAddUnknownMedia
@@ -82,7 +197,7 @@ func (h *Handler) HandleAddUnknownMedia(c echo.Context) error {
 	}
 
 	// Add non-added media entries to AniList collection
-	if err := h.App.AnilistPlatform.AddMediaToCollection(b.MediaIds); err != nil {
+	if err := h.App.AnilistPlatform.AddMediaToCollection(c.Request().Context(), b.MediaIds); err != nil {
 		return h.RespondWithError(c, errors.New("error: Anilist responded with an error, this is most likely a rate limit issue"))
 	}
 

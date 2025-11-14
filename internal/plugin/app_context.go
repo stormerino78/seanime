@@ -1,7 +1,7 @@
 package plugin
 
 import (
-	"seanime/internal/api/metadata"
+	"seanime/internal/api/metadata_provider"
 	"seanime/internal/continuity"
 	"seanime/internal/database/db"
 	"seanime/internal/database/models"
@@ -28,13 +28,14 @@ import (
 )
 
 type AppContextModules struct {
+	IsOffline                       *bool
 	Database                        *db.Database
 	AnimeLibraryPaths               *[]string
 	AnilistPlatform                 platform.Platform
 	PlaybackManager                 *playbackmanager.PlaybackManager
 	MediaPlayerRepository           *mediaplayer.Repository
 	MangaRepository                 *manga.Repository
-	MetadataProvider                metadata.Provider
+	MetadataProvider                metadata_provider.Provider
 	WSEventManager                  events.WSEventManagerInterface
 	DiscordPresence                 *discordrpc_presence.Presence
 	TorrentClientRepository         *torrent_client.Repository
@@ -63,6 +64,8 @@ type AppContext interface {
 	MediaPlayerRepository() mo.Option[*mediaplayer.Repository]
 	AnilistPlatform() mo.Option[platform.Platform]
 	WSEventManager() mo.Option[events.WSEventManagerInterface]
+
+	IsOffline() bool
 
 	BindApp(vm *goja.Runtime, logger *zerolog.Logger, ext *extension.Extension)
 	// BindStorage binds $storage to the Goja runtime
@@ -142,7 +145,7 @@ type AppContextImpl struct {
 	mangaRepository                 mo.Option[*manga.Repository]
 	anilistPlatform                 mo.Option[platform.Platform]
 	discordPresence                 mo.Option[*discordrpc_presence.Presence]
-	metadataProvider                mo.Option[metadata.Provider]
+	metadataProvider                mo.Option[metadata_provider.Provider]
 	fillerManager                   mo.Option[*fillermanager.FillerManager]
 	torrentClientRepository         mo.Option[*torrent_client.Repository]
 	torrentstreamRepository         mo.Option[*torrentstream.Repository]
@@ -154,6 +157,7 @@ type AppContextImpl struct {
 	fileCacher                      mo.Option[*filecache.Cacher]
 	onRefreshAnilistAnimeCollection mo.Option[func()]
 	onRefreshAnilistMangaCollection mo.Option[func()]
+	isOffline                       bool
 }
 
 func NewAppContext() AppContext {
@@ -165,7 +169,7 @@ func NewAppContext() AppContext {
 		mediaplayerRepo:                 mo.None[*mediaplayer.Repository](),
 		anilistPlatform:                 mo.None[platform.Platform](),
 		mangaRepository:                 mo.None[*manga.Repository](),
-		metadataProvider:                mo.None[metadata.Provider](),
+		metadataProvider:                mo.None[metadata_provider.Provider](),
 		wsEventManager:                  mo.None[events.WSEventManagerInterface](),
 		discordPresence:                 mo.None[*discordrpc_presence.Presence](),
 		fillerManager:                   mo.None[*fillermanager.FillerManager](),
@@ -179,9 +183,14 @@ func NewAppContext() AppContext {
 		fileCacher:                      mo.None[*filecache.Cacher](),
 		onRefreshAnilistAnimeCollection: mo.None[func()](),
 		onRefreshAnilistMangaCollection: mo.None[func()](),
+		isOffline:                       false,
 	}
 
 	return appCtx
+}
+
+func (a *AppContextImpl) IsOffline() bool {
+	return a.isOffline
 }
 
 func (a *AppContextImpl) SetLogger(logger *zerolog.Logger) {
@@ -209,6 +218,10 @@ func (a *AppContextImpl) WSEventManager() mo.Option[events.WSEventManagerInterfa
 }
 
 func (a *AppContextImpl) SetModulesPartial(modules AppContextModules) {
+	if modules.IsOffline != nil {
+		a.isOffline = *modules.IsOffline
+	}
+
 	if modules.Database != nil {
 		a.database = mo.Some(modules.Database)
 	}

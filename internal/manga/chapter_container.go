@@ -10,13 +10,16 @@ import (
 	"seanime/internal/extension"
 	hibikemanga "seanime/internal/extension/hibike/manga"
 	"seanime/internal/hook"
+	manga_providers "seanime/internal/manga/providers"
 	"seanime/internal/util"
 	"seanime/internal/util/comparison"
+	"seanime/internal/util/limiter"
 	"seanime/internal/util/result"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/samber/lo"
 )
@@ -52,6 +55,20 @@ func (r *Repository) GetMangaChapterContainer(opts *GetMangaChapterContainerOpti
 	provider := opts.Provider
 	mediaId := opts.MediaId
 	titles := opts.Titles
+
+	providerExtension, ok := extension.GetExtension[extension.MangaProviderExtension](r.providerExtensionBank, provider)
+	if !ok {
+		r.logger.Error().Str("provider", provider).Msg("manga: Provider not found")
+		return nil, errors.New("manga: Provider not found")
+	}
+
+	// DEVNOTE: Local chapters can be cached
+	localProvider, isLocalProvider := providerExtension.GetProvider().(*manga_providers.Local)
+
+	// Set the source directory for local provider
+	if isLocalProvider && r.settings.Manga.LocalSourceDirectory != "" {
+		localProvider.SetSourceDirectory(r.settings.Manga.LocalSourceDirectory)
+	}
 
 	r.logger.Trace().
 		Str("provider", provider).
@@ -117,12 +134,6 @@ func (r *Repository) GetMangaChapterContainer(opts *GetMangaChapterContainerOpti
 	// Delete the map cache
 	mangaLatestChapterNumberMap.Delete(ChapterCountMapCacheKey)
 
-	providerExtension, ok := extension.GetExtension[extension.MangaProviderExtension](r.providerExtensionBank, provider)
-	if !ok {
-		r.logger.Error().Str("provider", provider).Msg("manga: Provider not found")
-		return nil, errors.New("manga: Provider not found")
-	}
-
 	var mangaId string
 
 	// +---------------------+
@@ -171,7 +182,7 @@ func (r *Repository) GetMangaChapterContainer(opts *GetMangaChapterContainerOpti
 			}
 		}
 
-		if searchRes == nil || len(searchRes) == 0 {
+		if len(searchRes) == 0 {
 			r.logger.Error().Msg("manga: No search results found")
 			if err != nil {
 				return nil, fmt.Errorf("%w, %w", ErrNoResults, err)
@@ -239,55 +250,33 @@ func (r *Repository) GetMangaChapterContainer(opts *GetMangaChapterContainerOpti
 func (r *Repository) RefreshChapterContainers(mangaCollection *anilist.MangaCollection, selectedProviderMap map[int]string) (err error) {
 	defer util.HandlePanicInModuleWithError("manga/RefreshChapterContainers", &err)
 
-	// Read the cache directory
-	entries, err := os.ReadDir(r.cacheDir)
-	if err != nil {
-		return err
+	// first, delete all chapter containers in the cache
+	err = r.fileCacher.RemoveAllBy(func(filename string) bool {
+		return strings.HasPrefix(filename, "manga_")
+	})
+	// clear all stores
+	_ = r.fileCacher.Clear()
+
+	mangaLatestChapterNumberMap.Delete(ChapterCountMapCacheKey)
+
+	mu := sync.Mutex{}
+	wg := sync.WaitGroup{}
+	rateLimiters := make(map[string]*limiter.Limiter)
+	// make a limiter for each provider
+	for _, selectedProviderId := range selectedProviderMap {
+		// 2 requests per second
+		rateLimiters[selectedProviderId] = limiter.NewLimiter(time.Second, 2)
 	}
 
-	removedMediaIds := make(map[int]struct{})
-	mu := sync.Mutex{}
-
-	wg := sync.WaitGroup{}
-	wg.Add(len(entries))
-	for _, entry := range entries {
-		go func(entry os.DirEntry) {
+	wg.Add(len(selectedProviderMap))
+	for mediaId, selectedProviderId := range selectedProviderMap {
+		go func() {
 			defer wg.Done()
-
-			if entry.IsDir() {
-				return
-			}
-
-			provider, bucketType, mediaId, ok := ParseChapterContainerFileName(entry.Name())
+			// Get the selected provider
+			provider, ok := r.providerExtensionBank.Get(selectedProviderId)
 			if !ok {
+				r.logger.Warn().Str("provider", selectedProviderId).Int("mediaId", mediaId).Msg("manga: Provider not found")
 				return
-			}
-			// If the bucket type is not chapter, skip
-			if bucketType != bucketTypeChapter {
-				return
-			}
-
-			r.logger.Trace().Str("provider", provider).Int("mediaId", mediaId).Msg("manga: Refetching chapter container")
-
-			mu.Lock()
-			// Remove the container from the cache if it hasn't been removed yet
-			if _, ok := removedMediaIds[mediaId]; !ok {
-				r.EmptyMangaCache(mediaId)
-				removedMediaIds[mediaId] = struct{}{}
-			}
-			mu.Unlock()
-
-			// If a selectedProviderMap is provided, check if the provider is in the map
-			if selectedProviderMap != nil {
-				// If the manga is not in the map, continue
-				if _, ok := selectedProviderMap[mediaId]; !ok {
-					return
-				}
-
-				// If the provider is not the one selected, continue
-				if selectedProviderMap[mediaId] != provider {
-					return
-				}
 			}
 
 			// Get the manga from the collection
@@ -301,20 +290,27 @@ func (r *Repository) RefreshChapterContainers(mangaCollection *anilist.MangaColl
 				return
 			}
 
+			mu.Lock()
+			rateLimiter, ok := rateLimiters[selectedProviderId]
+			mu.Unlock()
+			if ok {
+				rateLimiter.Wait()
+			}
+
 			// Refetch the container
 			_, err = r.GetMangaChapterContainer(&GetMangaChapterContainerOptions{
-				Provider: provider,
+				Provider: provider.GetID(),
 				MediaId:  mediaId,
 				Titles:   mangaEntry.GetMedia().GetAllTitles(),
 				Year:     mangaEntry.GetMedia().GetStartYearSafe(),
 			})
 			if err != nil {
-				r.logger.Error().Err(err).Msg("manga: Failed to refetch chapter container")
+				r.logger.Warn().Err(err).Str("provider", provider.GetID()).Int("mediaId", mediaId).Msg("manga: Failed to fetch chapter container")
 				return
 			}
 
-			r.logger.Trace().Str("provider", provider).Int("mediaId", mediaId).Msg("manga: Refetched chapter container")
-		}(entry)
+			r.logger.Trace().Str("provider", provider.GetID()).Int("mediaId", mediaId).Msg("manga: Fetched chapter container")
+		}()
 	}
 	wg.Wait()
 

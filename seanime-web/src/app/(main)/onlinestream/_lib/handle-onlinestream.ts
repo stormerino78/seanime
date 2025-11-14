@@ -2,6 +2,9 @@ import { getServerBaseUrl } from "@/api/client/server-url"
 import { ExtensionRepo_OnlinestreamProviderExtensionItem, Onlinestream_EpisodeSource } from "@/api/generated/types"
 import { useHandleCurrentMediaContinuity } from "@/api/hooks/continuity.hooks"
 import { useGetOnlineStreamEpisodeList, useGetOnlineStreamEpisodeSource } from "@/api/hooks/onlinestream.hooks"
+import { useNakamaStatus } from "@/app/(main)/_features/nakama/nakama-manager"
+import { useWebsocketSender } from "@/app/(main)/_hooks/handle-websockets"
+import { useServerHMACAuth } from "@/app/(main)/_hooks/use-server-status"
 import { useHandleOnlinestreamProviderExtensions } from "@/app/(main)/onlinestream/_lib/handle-onlinestream-providers"
 import {
     __onlinestream_qualityAtom,
@@ -12,10 +15,12 @@ import {
 } from "@/app/(main)/onlinestream/_lib/onlinestream.atoms"
 import { logger } from "@/lib/helpers/debug"
 import { MediaPlayerInstance } from "@vidstack/react"
+import { atom } from "jotai"
 import { useAtom, useAtomValue, useSetAtom } from "jotai/react"
 import { uniq } from "lodash"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import React from "react"
+import { useUpdateEffect } from "react-use"
 import { toast } from "sonner"
 
 export function useOnlinestreamEpisodeList(mId: string | null) {
@@ -50,7 +55,7 @@ export function useOnlinestreamEpisodeSource(extensions: ExtensionRepo_Onlinestr
 
     const extension = React.useMemo(() => extensions.find(p => p.id === provider), [extensions, provider])
 
-    const { data, isLoading, isFetching, isError } = useGetOnlineStreamEpisodeSource(
+    const { data, isLoading, isFetching, isError, error } = useGetOnlineStreamEpisodeSource(
         mId,
         provider,
         episodeNumber,
@@ -63,6 +68,7 @@ export function useOnlinestreamEpisodeSource(extensions: ExtensionRepo_Onlinestr
         isLoading,
         isFetching,
         isError,
+        error,
     }
 }
 
@@ -139,6 +145,10 @@ export function useHandleOnlinestream(props: HandleOnlinestreamProps) {
 
     const { providerExtensions, providerExtensionOptions } = useHandleOnlinestreamProviderExtensions()
 
+    // Nakama Watch Party
+    const nakamaStatus = useNakamaStatus()
+    const { streamToLoad, onLoadedStream, hostNotifyStreamStarted } = useNakamaOnlineStreamWatchParty()
+
     /**
      * 1. Get the list of episodes
      */
@@ -157,6 +167,7 @@ export function useHandleOnlinestream(props: HandleOnlinestreamProps) {
         isLoading: isLoadingEpisodeSource,
         isFetching: isFetchingEpisodeSource,
         isError: isErrorEpisodeSource,
+        error: errorEpisodeSource,
     } = useOnlinestreamEpisodeSource(providerExtensions, mediaId, (isSuccess && !waitForWatchHistory))
 
     /**
@@ -165,7 +176,7 @@ export function useHandleOnlinestream(props: HandleOnlinestreamProps) {
     const setEpisodeNumber = useSetAtom(__onlinestream_selectedEpisodeNumberAtom)
     const setServer = useSetAtom(__onlinestream_selectedServerAtom)
     const setQuality = useSetAtom(__onlinestream_qualityAtom)
-    const setDubbed = useSetAtom(__onlinestream_selectedDubbedAtom)
+    const [dubbed, setDubbed] = useAtom(__onlinestream_selectedDubbedAtom)
     const [provider, setProvider] = useAtom(__onlinestream_selectedProviderAtom)
 
     const [url, setUrl] = React.useState<string | undefined>(undefined)
@@ -207,27 +218,31 @@ export function useHandleOnlinestream(props: HandleOnlinestreamProps) {
      */
     const { videoSource } = useOnlinestreamVideoSource(episodeSource)
 
+    const { getHMACTokenQueryParam } = useServerHMACAuth()
+
     /**
      * 3. Change the stream URL when the video source changes
      */
     React.useEffect(() => {
-        logger("ONLINESTREAM").info("Changing stream URL using videoSource", { videoSource })
-        setUrl(undefined)
-        logger("ONLINESTREAM").info("Setting stream URL to undefined")
-        if (videoSource?.url) {
-            setServer(videoSource.server)
-            let _url = videoSource.url
-            if (videoSource.headers && Object.keys(videoSource.headers).length > 0) {
-                _url = `${getServerBaseUrl()}/api/v1/proxy?url=${encodeURIComponent(videoSource?.url)}&headers=${encodeURIComponent(JSON.stringify(
-                    videoSource?.headers))}`
-            } else {
-                _url = videoSource.url
+        (async () => {
+            logger("ONLINESTREAM").info("Changing stream URL using videoSource", { videoSource })
+            setUrl(undefined)
+            logger("ONLINESTREAM").info("Setting stream URL to undefined")
+            if (videoSource?.url) {
+                setServer(videoSource.server)
+                let _url = videoSource.url
+                if (videoSource.headers && Object.keys(videoSource.headers).length > 0) {
+                    _url = `${getServerBaseUrl()}/api/v1/proxy?url=${encodeURIComponent(videoSource?.url)}&headers=${encodeURIComponent(JSON.stringify(
+                        videoSource?.headers))}` + (await getHMACTokenQueryParam("/api/v1/proxy", "&"))
+                } else {
+                    _url = videoSource.url
+                }
+                React.startTransition(() => {
+                    logger("ONLINESTREAM").info("Setting stream URL", { url: _url })
+                    setUrl(_url)
+                })
             }
-            React.startTransition(() => {
-                logger("ONLINESTREAM").info("Setting stream URL", { url: _url })
-                setUrl(_url)
-            })
-        }
+        })()
     }, [videoSource?.url])
 
     // When the provider changes, set the currentProviderRef
@@ -239,6 +254,27 @@ export function useHandleOnlinestream(props: HandleOnlinestreamProps) {
     React.useEffect(() => {
         logger("ONLINESTREAM").info("URL changed", { url })
     }, [url])
+
+    useUpdateEffect(() => {
+        if (!streamToLoad) return
+
+        logger("ONLINESTREAM").info("Stream to load", { streamToLoad })
+
+        // Check if we have the provider
+        if (!providerExtensionOptions.some(p => p.value === streamToLoad.provider)) {
+            logger("ONLINESTREAM").warning("Provider not found in options", { providerExtensionOptions, provider: streamToLoad.provider })
+            toast.error("Watch Party: The provider used by the host is not installed.")
+            return
+        }
+
+        setProvider(streamToLoad.provider)
+        setDubbed(streamToLoad.dubbed)
+        setEpisodeNumber(streamToLoad.episodeNumber)
+        setServer(streamToLoad.server)
+        setQuality(streamToLoad.quality)
+
+        onLoadedStream()
+    }, [streamToLoad])
 
 
     //////////////////////////////////////////////////////////////
@@ -294,6 +330,21 @@ export function useHandleOnlinestream(props: HandleOnlinestreamProps) {
             previousCurrentTime: previousCurrentTimeRef.current,
             previousIsPlayingRef: previousIsPlayingRef.current,
         })
+
+        // Handle Nakama Watch Party
+        // Send the playback info to the server
+        if (nakamaStatus?.isHost && nakamaStatus.currentWatchPartySession && !nakamaStatus?.currentWatchPartySession.isRelayMode) {
+            const params = {
+                mediaId: media?.id ?? 0,
+                provider: currentProviderRef.current ?? "",
+                episodeNumber: episodeSource?.number ?? 0,
+                server: videoSource?.server ?? "",
+                quality: videoSource?.quality ?? "",
+                dubbed: dubbed,
+            }
+            logger("ONLINESTREAM").info("Watch Party: Notifying peers that stream has started", params)
+            hostNotifyStreamStarted(params)
+        }
 
         // When the onCanPlay event is received
         // Restore the previous time if set
@@ -401,6 +452,7 @@ export function useHandleOnlinestream(props: HandleOnlinestreamProps) {
         handleChangeEpisodeNumber,
         episodeLoading: isLoadingEpisodeSource || isFetchingEpisodeSource,
         isErrorEpisodeSource,
+        errorEpisodeSource,
         isErrorProvider: isError,
         opts: {
             selectedExtension,
@@ -421,3 +473,69 @@ export function useHandleOnlinestream(props: HandleOnlinestreamProps) {
 }
 
 export type OnlinestreamManagerOpts = ReturnType<typeof useHandleOnlinestream>
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export type OnlineStreamParams = {
+    mediaId: number
+    provider: string
+    episodeNumber: number
+    server: string
+    quality: string
+    dubbed: boolean
+}
+
+const __onlinestream_streamToLoadAtom = atom<OnlineStreamParams | null>(null)
+
+export function useNakamaOnlineStreamWatchParty() {
+    const [streamToLoad, setStreamToLoad] = useAtom(__onlinestream_streamToLoadAtom)
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
+    const router = useRouter()
+    const nakamaStatus = useNakamaStatus()
+
+    const { sendMessage } = useWebsocketSender()
+
+
+    return {
+        // Host
+        hostNotifyStreamStarted: (params: OnlineStreamParams) => {
+            if (!nakamaStatus?.isHost) {
+                logger("ONLINESTREAM").warning("hostNotifyStreamStarted called, but not a host")
+                return
+            }
+            sendMessage({
+                type: "nakama",
+                payload: {
+                    type: "online-stream-started",
+                    payload: {
+                        mediaId: params.mediaId,
+                        provider: params.provider,
+                        episodeNumber: params.episodeNumber,
+                        server: params.server,
+                        quality: params.quality,
+                        dubbed: params.dubbed,
+                    },
+                },
+            })
+        },
+        // Peers
+        streamToLoad,
+        onLoadedStream: () => {
+            setStreamToLoad(null)
+        },
+        startOnlineStream(params: OnlineStreamParams) {
+            if (nakamaStatus?.isHost) {
+                logger("ONLINESTREAM").info("Start online stream event sent to peers", params)
+                return
+            }
+            logger("ONLINESTREAM").info("Starting online stream", params)
+            setStreamToLoad(params)
+            if (pathname !== "/entry" || searchParams.get("id") !== String(params.mediaId)) {
+                // Navigate to the onlinestream page
+                router.push("/entry?id=" + params.mediaId + "&tab=onlinestream&provider=" + params.provider + "&episodeNumber=" + params.episodeNumber + "&server=" + params.server + "&quality=" + params.quality + "&dubbed=" + params.dubbed)
+            }
+        },
+    }
+}

@@ -5,8 +5,10 @@ import {
     useReloadExternalExtension,
     useSetPluginSettingsPinnedTrays,
 } from "@/api/hooks/extensions.hooks"
+import { WebSocketContext } from "@/app/(main)/_atoms/websocket.atoms"
 import { PluginTray, TrayIcon } from "@/app/(main)/_features/plugin/tray/plugin-tray"
 import { useWebsocketMessageListener } from "@/app/(main)/_hooks/handle-websockets"
+import { SeaImage } from "@/components/shared/sea-image"
 import { IconButton } from "@/components/ui/button"
 import { cn } from "@/components/ui/core/styling"
 import { Popover } from "@/components/ui/popover"
@@ -15,18 +17,24 @@ import { WSEvents } from "@/lib/server/ws-events"
 import { useWindowSize } from "@uidotdev/usehooks"
 import { useAtom } from "jotai/react"
 import { atom } from "jotai/vanilla"
-import Image from "next/image"
 import { usePathname } from "next/navigation"
 import React from "react"
-import { LuBlocks, LuBug, LuCircleDashed, LuRefreshCw, LuShapes } from "react-icons/lu"
+import { LuBlocks, LuCircleDashed, LuCircuitBoard, LuComponent, LuRefreshCw } from "react-icons/lu"
 import { TbPinned, TbPinnedFilled } from "react-icons/tb"
-import { usePluginListenTrayIconEvent, usePluginSendListTrayIconsEvent } from "../generated/plugin-events"
+import {
+    usePluginListenTrayCloseEvent,
+    usePluginListenTrayIconEvent,
+    usePluginListenTrayOpenEvent,
+    usePluginSendListTrayIconsEvent,
+} from "../generated/plugin-events"
 
 export const __plugin_trayIconsAtom = atom<TrayIcon[]>([])
 
 export const __plugin_hasNavigatedAtom = atom<boolean>(false)
 
 export const __plugin_unpinnedTrayIconClickedAtom = atom<TrayIcon | null>(null)
+
+export const __plugin_openedTrayPlugin = atom<string | null>(null)
 
 const ExtensionList = ({
     place,
@@ -53,10 +61,32 @@ const ExtensionList = ({
     const isPinned = (extensionId: string) => pinnedTrayPluginIds.includes(extensionId)
 
     const [unpinnedTrayIconClicked, setUnpinnedTrayIconClicked] = useAtom(__plugin_unpinnedTrayIconClickedAtom)
+    const [openedTrayPlugin, setOpenedTrayPlugin] = useAtom(__plugin_openedTrayPlugin)
+
 
     const [trayIconListOpen, setTrayIconListOpen] = React.useState(false)
 
     const pinnedTrayIcons = trayIcons.filter(trayIcon => isPinned(trayIcon.extensionId) || trayIcon.extensionId === unpinnedTrayIconClicked?.extensionId)
+
+    usePluginListenTrayOpenEvent((data) => {
+        if (!data.extensionId) return
+
+        if (!isPinned(data.extensionId)) {
+            setUnpinnedTrayIconClicked(trayIcons.find(t => t.extensionId === data.extensionId) || null)
+            setOpenedTrayPlugin(data.extensionId)
+        }
+    }, "")
+
+    usePluginListenTrayCloseEvent((data) => {
+        if (!data.extensionId) return
+
+        if (!isPinned(data.extensionId) && unpinnedTrayIconClicked?.extensionId === data.extensionId) {
+            setUnpinnedTrayIconClicked(null)
+        }
+        if (openedTrayPlugin === data.extensionId) {
+            setOpenedTrayPlugin(null)
+        }
+    }, "")
 
     return (
         <>
@@ -80,10 +110,10 @@ const ExtensionList = ({
                             trigger={<IconButton
                                 intent="gray-basic"
                                 size="sm"
-                                icon={<LuShapes className="size-5 text-[--muted]" />}
+                                icon={<LuComponent className="size-5 text-[--muted]" />}
                                 className="rounded-full hover:rotate-360 transition-all duration-300"
                             />}
-                        >Tray plugins</Tooltip>
+                        >Tray Plugins</Tooltip>
                     </div>}
                     className="p-2 w-[300px]"
                     data-plugin-sidebar-debug-popover
@@ -105,7 +135,7 @@ const ExtensionList = ({
                                     }}
                                 >
                                     <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden relative flex-none">
-                                        {trayIcon.iconUrl ? <Image
+                                        {trayIcon.iconUrl ? <SeaImage
                                             src={trayIcon.iconUrl}
                                             alt="logo"
                                             fill
@@ -189,7 +219,7 @@ const ExtensionList = ({
                         <IconButton
                             intent="warning-basic"
                             size="sm"
-                            icon={<LuBug className="size-4" />}
+                            icon={<LuCircuitBoard className="size-4" />}
                             className="rounded-full"
                         />
                     </div>}
@@ -197,7 +227,7 @@ const ExtensionList = ({
                     data-plugin-sidebar-debug-popover
                     modal={false}
                 >
-                    <div className="space-y-2" data-plugin-sidebar-debug-popover-content>
+                    <div className="space-y-1" data-plugin-sidebar-debug-popover-content>
                         <div className="text-sm space-y-1">
                             <p className="font-bold">
                                 Debug
@@ -226,13 +256,13 @@ const ExtensionList = ({
 
                 {pinnedTrayIcons.map((trayIcon, index) => (
                     <PluginTray
+                        key={trayIcon.extensionId}
                         trayIcon={trayIcon}
-                            isPinned={isPinned(trayIcon.extensionId)}
-                            key={index}
-                            place={place}
-                            width={width}
-                        />
-                    ))}
+                        isPinned={isPinned(trayIcon.extensionId)}
+                        place={place}
+                        width={width}
+                    />
+                ))}
             </div>
         </>
     )
@@ -246,6 +276,11 @@ export function PluginSidebarTray({ place }: { place: "sidebar" | "top" }) {
     const pathname = usePathname()
 
     const { data: pluginSettings } = useGetPluginSettings()
+
+    const [mobileExtensionListOpen, setMobileExtensionListOpen] = React.useState(false)
+    const [pendingTrayOpenExtensionId, setPendingTrayOpenExtensionId] = React.useState<string | null>(null)
+
+    const socket = React.useContext(WebSocketContext)
 
     const firstRender = React.useRef(true)
     React.useEffect(() => {
@@ -287,6 +322,59 @@ export function PluginSidebarTray({ place }: { place: "sidebar" | "top" }) {
         })
     }, "")
 
+    /**
+     * Handling mobile programmatic tray open/close
+     */
+
+    usePluginListenTrayOpenEvent((data) => {
+        const isMobile = width && width < 1024
+        if (isMobile && place === "top") {
+            // Store which extension triggered the open event
+            setPendingTrayOpenExtensionId(data.extensionId || "")
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: "smooth" })
+            // Open the mobile extension list
+            setMobileExtensionListOpen(true)
+        }
+    }, "")
+
+    usePluginListenTrayCloseEvent((data) => {
+        const isMobile = width && width < 1024
+        if (isMobile && place === "top") {
+            setPendingTrayOpenExtensionId(null)
+            setTimeout(() => {
+                setMobileExtensionListOpen(false)
+            }, 300)
+        }
+    }, "")
+
+    // Re-send the tray open event after the extension list is opened and rendered.
+    // This is necessary because the first tray open event is ignored since the tray is not rendered yet.
+    React.useEffect(() => {
+        if (mobileExtensionListOpen && pendingTrayOpenExtensionId && socket) {
+            // Small delay to ensure the PluginTray components are rendered
+            const timeout = setTimeout(() => {
+                // Re-send the tray open event now that the extension list is open
+                const fakeEvent = new MessageEvent("message", {
+                    data: JSON.stringify({
+                        type: "plugin",
+                        payload: {
+                            type: "tray:open",
+                            extensionId: pendingTrayOpenExtensionId,
+                            payload: {
+                                extensionId: pendingTrayOpenExtensionId,
+                            },
+                        },
+                    }),
+                })
+                socket.dispatchEvent(fakeEvent)
+            }, 100)
+            return () => clearTimeout(timeout)
+        }
+    }, [mobileExtensionListOpen, pendingTrayOpenExtensionId, socket])
+
+    // End
+
     const { data: developmentModeExtensions, refetch } = useListDevelopmentModeExtensions()
     const { mutate: reloadExternalExtension, isPending: isReloadingExtension } = useReloadExternalExtension()
 
@@ -318,6 +406,8 @@ export function PluginSidebarTray({ place }: { place: "sidebar" | "top" }) {
             />}
             {isMobile && place === "top" && <div className="">
                 <Popover
+                    open={mobileExtensionListOpen}
+                    onOpenChange={setMobileExtensionListOpen}
                     side="bottom"
                     trigger={<div>
                         <IconButton

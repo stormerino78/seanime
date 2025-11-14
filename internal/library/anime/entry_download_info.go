@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"seanime/internal/api/anilist"
 	"seanime/internal/api/metadata"
+	"seanime/internal/api/metadata_provider"
+	"seanime/internal/hook"
 	"strconv"
 
 	"github.com/samber/lo"
@@ -37,7 +39,7 @@ type (
 		Media            *anilist.BaseAnime
 		Progress         *int
 		Status           *anilist.MediaListStatus
-		MetadataProvider metadata.Provider
+		MetadataProvider metadata_provider.Provider
 	}
 )
 
@@ -45,13 +47,41 @@ type (
 // based on the options provided.
 func NewEntryDownloadInfo(opts *NewEntryDownloadInfoOptions) (*EntryDownloadInfo, error) {
 
+	reqEvent := &AnimeEntryDownloadInfoRequestedEvent{
+		LocalFiles:        opts.LocalFiles,
+		AnimeMetadata:     opts.AnimeMetadata,
+		Media:             opts.Media,
+		Progress:          opts.Progress,
+		Status:            opts.Status,
+		EntryDownloadInfo: &EntryDownloadInfo{},
+	}
+
+	err := hook.GlobalHookManager.OnAnimeEntryDownloadInfoRequested().Trigger(reqEvent)
+	if err != nil {
+		return nil, err
+	}
+
+	if reqEvent.DefaultPrevented {
+		return reqEvent.EntryDownloadInfo, nil
+	}
+
+	opts.LocalFiles = reqEvent.LocalFiles
+	opts.AnimeMetadata = reqEvent.AnimeMetadata
+	opts.Media = reqEvent.Media
+	opts.Progress = reqEvent.Progress
+	opts.Status = reqEvent.Status
+
 	if *opts.Media.Status == anilist.MediaStatusNotYetReleased {
 		return &EntryDownloadInfo{}, nil
 	}
 	if opts.AnimeMetadata == nil {
 		return nil, errors.New("could not get anime metadata")
 	}
-	if opts.Media.GetCurrentEpisodeCount() == -1 {
+	currentEpisodeCount := opts.Media.GetCurrentEpisodeCount()
+	if currentEpisodeCount == -1 && opts.AnimeMetadata != nil {
+		currentEpisodeCount = opts.AnimeMetadata.GetCurrentEpisodeCount()
+	}
+	if currentEpisodeCount == -1 {
 		return nil, errors.New("could not get current media episode count")
 	}
 
@@ -63,7 +93,7 @@ func NewEntryDownloadInfo(opts *NewEntryDownloadInfoOptions) (*EntryDownloadInfo
 	discrepancy := FindDiscrepancy(opts.Media, opts.AnimeMetadata)
 
 	// AniList is the source of truth for episode numbers
-	epSlice := newEpisodeSlice(opts.Media.GetCurrentEpisodeCount())
+	epSlice := newEpisodeSlice(currentEpisodeCount)
 
 	// Handle discrepancies
 	if discrepancy != DiscrepancyNone {
@@ -77,10 +107,10 @@ func NewEntryDownloadInfo(opts *NewEntryDownloadInfoOptions) (*EntryDownloadInfo
 
 		// If AniList includes specials, but AniDB does not
 		if discrepancy == DiscrepancyAniListCountsSpecials {
-			diff := opts.Media.GetCurrentEpisodeCount() - opts.AnimeMetadata.GetMainEpisodeCount()
+			diff := currentEpisodeCount - opts.AnimeMetadata.GetMainEpisodeCount()
 			epSlice.trimEnd(diff)
 			for i := 0; i < diff; i++ {
-				epSlice.add(opts.Media.GetCurrentEpisodeCount()-i, "S"+strconv.Itoa(i+1))
+				epSlice.add(currentEpisodeCount-i, "S"+strconv.Itoa(i+1))
 			}
 		}
 
@@ -214,14 +244,24 @@ func NewEntryDownloadInfo(opts *NewEntryDownloadInfoOptions) (*EntryDownloadInfo
 		rewatch = true
 	}
 
-	return &EntryDownloadInfo{
+	downloadInfo := &EntryDownloadInfo{
 		EpisodesToDownload:    episodesToDownload,
 		CanBatch:              canBatch,
 		BatchAll:              batchAll,
 		Rewatch:               rewatch,
 		HasInaccurateSchedule: hasInaccurateSchedule,
 		AbsoluteOffset:        opts.AnimeMetadata.GetOffset(),
-	}, nil
+	}
+
+	event := &AnimeEntryDownloadInfoEvent{
+		EntryDownloadInfo: downloadInfo,
+	}
+	err = hook.GlobalHookManager.OnAnimeEntryDownloadInfo().Trigger(event)
+	if err != nil {
+		return nil, err
+	}
+
+	return event.EntryDownloadInfo, nil
 }
 
 type episodeSliceItem struct {

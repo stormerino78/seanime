@@ -1,9 +1,11 @@
+import { serverAuthTokenAtom } from "@/app/(main)/_atoms/server-status.atoms"
 import { WebSocketContext } from "@/app/(main)/_atoms/websocket.atoms"
+import { useServerStatus } from "@/app/(main)/_hooks/use-server-status"
 import { clientIdAtom, websocketConnectedAtom } from "@/app/websocket-provider"
 import { logger } from "@/lib/helpers/debug"
 import { SeaWebsocketEvent, SeaWebsocketPluginEvent } from "@/lib/server/queries.types"
 import { WSEvents } from "@/lib/server/ws-events"
-import { useAtom } from "jotai"
+import { useAtom, useAtomValue } from "jotai"
 import { useContext, useEffect, useRef } from "react"
 import useUpdateEffect from "react-use/lib/useUpdateEffect"
 
@@ -15,6 +17,12 @@ export function useWebsocketSender() {
     // Store message queue in a ref so it persists across rerenders and socket changes
     const messageQueue = useRef<SeaWebsocketEvent<any>[]>([])
     const processingQueueRef = useRef<NodeJS.Timeout | null>(null)
+
+    // Plugin event batching
+    const pluginEventBatchRef = useRef<Array<{ type: string, payload: any, extensionId?: string }>>([])
+    const pluginBatchTimerRef = useRef<NodeJS.Timeout | null>(null)
+    const MAX_PLUGIN_BATCH_SIZE = 20
+    const PLUGIN_BATCH_FLUSH_INTERVAL = 10 // ms
 
     // Keep a local latest reference to socket to ensure we're using the most recent one
     const latestSocketRef = useRef<WebSocket | null>(null)
@@ -33,18 +41,67 @@ export function useWebsocketSender() {
         }
     }, [socket])
 
-    // Add debug log for socket state changes
+    // Clean up event batch timer on unmount
     useEffect(() => {
-        if (socket) {
-            // logger("WebsocketSender").info(`Socket state changed: ${getReadyStateString(socket.readyState)}`)
-
-            // If socket becomes open, process queue immediately
-            if (socket.readyState === WebSocket.OPEN && messageQueue.current.length > 0) {
-                // logger("WebsocketSender").info(`Socket became OPEN with ${messageQueue.current.length} messages in queue`)
-                setTimeout(() => processQueue(), 100) // Small delay to ensure socket is fully established
+        return () => {
+            if (pluginBatchTimerRef.current) {
+                clearTimeout(pluginBatchTimerRef.current)
+                pluginBatchTimerRef.current = null
             }
         }
-    }, [socket?.readyState])
+    }, [])
+
+    function flushPluginEventBatch() {
+        if (pluginBatchTimerRef.current) {
+            clearTimeout(pluginBatchTimerRef.current)
+            pluginBatchTimerRef.current = null
+        }
+
+        if (pluginEventBatchRef.current.length === 0) return
+
+        // Create a copy of the current batch
+        const events = [...pluginEventBatchRef.current]
+        pluginEventBatchRef.current = []
+
+        // Deduplicate events by type, extension ID, and payload
+        const deduplicatedEvents = events.filter((event, index, self) => {
+            return index === self.findIndex((t) => (t.type === event.type && t.extensionId === event.extensionId && JSON.stringify(t.payload) === JSON.stringify(
+                    event.payload)),
+                // ||(event.type === PluginClientEvents.DOMElementUpdated && t.type === event.type && t.extensionId === event.extensionId)
+            )
+        })
+        // const deduplicatedEvents = events
+
+        // if (events.length !== deduplicatedEvents.length) {
+        //     logger("WebsocketSender").info(`Deduplicated ${events.length - deduplicatedEvents.length} events from batch of ${events.length}`)
+        // }
+
+        // If only one event, send it directly without batching
+        if (deduplicatedEvents.length === 1) {
+            const event = deduplicatedEvents[0]
+            sendMessage({
+                type: "plugin",
+                payload: {
+                    type: event.type,
+                    extensionId: event.extensionId,
+                    payload: event.payload,
+                },
+            })
+            return
+        }
+
+        // Send the batch
+        sendMessage({
+            type: "plugin",
+            payload: {
+                type: "client:batch-events",
+                extensionId: "", // Do not use extension ID for batch events
+                payload: {
+                    events: deduplicatedEvents,
+                },
+            },
+        })
+    }
 
     function getReadyStateString(state?: number): string {
         if (state === undefined) return "UNDEFINED"
@@ -92,6 +149,27 @@ export function useWebsocketSender() {
             // Always ensure queue processor is running
             ensureQueueProcessorIsRunning()
             return false
+        }
+    }
+
+    // Add a plugin event to the batch
+    function addPluginEventToBatch(type: string, payload: any, extensionId?: string) {
+        pluginEventBatchRef.current.push({
+            type,
+            payload,
+            extensionId,
+        })
+
+        // If this is the first event, start the timer
+        if (pluginEventBatchRef.current.length === 1) {
+            pluginBatchTimerRef.current = setTimeout(() => {
+                flushPluginEventBatch()
+            }, PLUGIN_BATCH_FLUSH_INTERVAL)
+        }
+
+        // If we've reached the max batch size, flush immediately
+        if (pluginEventBatchRef.current.length >= MAX_PLUGIN_BATCH_SIZE) {
+            flushPluginEventBatch()
         }
     }
 
@@ -170,20 +248,20 @@ export function useWebsocketSender() {
                 clearTimeout(processingQueueRef.current)
                 processingQueueRef.current = null
             }
+
+            // Flush any batched events before unmounting
+            if (pluginEventBatchRef.current.length > 0) {
+                flushPluginEventBatch()
+            }
         }
     }, [isConnected]);
 
     return {
         sendMessage,
         sendPluginMessage: (type: string, payload: any, extensionId?: string) => {
-            return sendMessage({
-                type: "plugin",
-                payload: {
-                    type: type,
-                    extensionId: extensionId,
-                    payload: payload,
-                },
-            })
+            // Use batching for plugin messages
+            addPluginEventToBatch(type, payload, extensionId)
+            return true
         },
     }
 }
@@ -205,10 +283,16 @@ export type WebSocketMessageListener<TData> = {
 
 export function useWebsocketMessageListener<TData = unknown>({ type, onMessage }: WebSocketMessageListener<TData>) {
     const socket = useContext(WebSocketContext)
+    const status = useServerStatus()
+    const password = useAtomValue(serverAuthTokenAtom)
 
     useEffect(() => {
         if (socket) {
             const messageHandler = (event: MessageEvent) => {
+                if (status?.serverHasPassword && !password) {
+                    logger("Websocket").warning("Unauthenticated, skipping message")
+                    return
+                }
                 try {
                     const parsed = JSON.parse(event.data) as SeaWebsocketEvent<TData>
                     if (!!parsed.type && parsed.type === type) {
@@ -247,16 +331,33 @@ export function useWebsocketPluginMessageListener<TData = unknown>({ type, exten
                     const parsed = JSON.parse(event.data) as SeaWebsocketEvent<TData>
                     if (!!parsed.type && parsed.type === "plugin") {
                         const message = parsed.payload as SeaWebsocketPluginEvent<TData>
-                        // Plugins always send back their extension ID
-                        // Invoke the callback only if the extension ID of the message matches the ID we're listening to
-                        // OR if we're listening to all plugins (i.e. extensionId is "")
-                        if (message.type === type && (message.extensionId === extensionId || extensionId === "")) {
-                            onMessage(message.payload, message.extensionId)
+
+
+                        // Handle batch events
+                        if (message.type === "plugin:batch-events" && message.payload && (message.payload as any).events) {
+                            // Extract and process each event in the batch
+                            const batchPayload = message.payload as any
+                            const events = batchPayload.events || []
+
+                            // Process each event in the batch
+                            for (const event of events) {
+                                if (event.type === type &&
+                                    (!extensionId || extensionId === event.extensionId || extensionId === "")) {
+                                    onMessage(event.payload as TData, event.extensionId)
+                                }
+                            }
+                            return
+                        }
+
+                        // Handle regular events
+                        if (message.type === type &&
+                            (!extensionId || extensionId === message.extensionId || extensionId === "")) {
+                            onMessage(message.payload as TData, message.extensionId)
                         }
                     }
                 }
                 catch (e) {
-                    logger("Websocket").error("Error parsing message", e)
+                    logger("Websocket").error("Error parsing plugin message", e)
                 }
             }
 
@@ -266,7 +367,7 @@ export function useWebsocketPluginMessageListener<TData = unknown>({ type, exten
                 socket.removeEventListener("message", messageHandler)
             }
         }
-    }, [socket, onMessage])
+    }, [socket, onMessage, type, extensionId])
 
     return null
 }

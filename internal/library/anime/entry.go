@@ -1,11 +1,12 @@
 package anime
 
 import (
+	"context"
 	"errors"
 	"seanime/internal/api/anilist"
 	"seanime/internal/api/metadata"
+	"seanime/internal/api/metadata_provider"
 	"seanime/internal/hook"
-	"seanime/internal/platforms/anilist_platform"
 	"seanime/internal/platforms/platform"
 	"sort"
 
@@ -27,6 +28,9 @@ type (
 		LocalFiles          []*LocalFile       `json:"localFiles"`
 		AnidbId             int                `json:"anidbId"`
 		CurrentEpisodeCount int                `json:"currentEpisodeCount"`
+
+		IsNakamaEntry     bool                    `json:"_isNakamaEntry"`
+		NakamaLibraryData *NakamaEntryLibraryData `json:"nakamaLibraryData,omitempty"`
 	}
 
 	// EntryListData holds the details of the AniList entry.
@@ -47,7 +51,8 @@ type (
 		LocalFiles       []*LocalFile // All local files
 		AnimeCollection  *anilist.AnimeCollection
 		Platform         platform.Platform
-		MetadataProvider metadata.Provider
+		MetadataProvider metadata_provider.Provider
+		IsSimulated      bool // If the account is simulated
 	}
 )
 
@@ -64,7 +69,7 @@ type (
 //   - LocalFiles: List of local files (if any)
 //   - AnidbId: AniDB id
 //   - CurrentEpisodeCount: Current episode count
-func NewEntry(opts *NewEntryOptions) (*Entry, error) {
+func NewEntry(ctx context.Context, opts *NewEntryOptions) (*Entry, error) {
 	// Create new Entry
 	entry := new(Entry)
 	entry.MediaId = opts.MediaId
@@ -118,19 +123,30 @@ func NewEntry(opts *NewEntryOptions) (*Entry, error) {
 		anilistEntry = &anilist.AnimeListEntry{}
 
 		// Fetch the media
-		fetchedMedia, err := opts.Platform.GetAnime(opts.MediaId) // DEVNOTE: Maybe cache it?
+		fetchedMedia, err := opts.Platform.GetAnime(ctx, opts.MediaId) // DEVNOTE: Maybe cache it?
 		if err != nil {
 			return nil, err
 		}
 		entry.Media = fetchedMedia
 	} else {
-		animeEvent := new(anilist_platform.GetAnimeEvent)
+		animeEvent := new(platform.GetAnimeEvent)
 		animeEvent.Anime = anilistEntry.Media
 		err := hook.GlobalHookManager.OnGetAnime().Trigger(animeEvent)
 		if err != nil {
 			return nil, err
 		}
 		entry.Media = animeEvent.Anime
+	}
+
+	// If the account is simulated and the media was in the library, we will still fetch
+	// the media from AniList to ensure we have the latest data
+	if opts.IsSimulated && found {
+		// Fetch the media
+		fetchedMedia, err := opts.Platform.GetAnime(ctx, opts.MediaId) // DEVNOTE: Maybe cache it?
+		if err != nil {
+			return nil, err
+		}
+		entry.Media = fetchedMedia
 	}
 
 	entry.CurrentEpisodeCount = entry.Media.GetCurrentEpisodeCount()
@@ -151,7 +167,7 @@ func NewEntry(opts *NewEntryOptions) (*Entry, error) {
 	entry.EntryLibraryData = libraryData
 
 	// +---------------------+
-	// |       AniZip        |
+	// |       Animap        |
 	// +---------------------+
 
 	// Fetch AniDB data and cache it for 30 minutes
@@ -160,11 +176,11 @@ func NewEntry(opts *NewEntryOptions) (*Entry, error) {
 
 		// +---------------- Start
 		// +---------------------+
-		// |   Without AniZip    |
+		// |   Without Animap    |
 		// +---------------------+
 
-		// If AniZip data is not found, we will still create the Entry without it
-		simpleAnimeEntry, err := NewSimpleEntry(&NewSimpleAnimeEntryOptions{
+		// If Animap data is not found, we will still create the Entry without it
+		simpleAnimeEntry, err := NewSimpleEntry(ctx, &NewSimpleAnimeEntryOptions{
 			MediaId:         opts.MediaId,
 			LocalFiles:      opts.LocalFiles,
 			AnimeCollection: opts.AnimeCollection,
@@ -174,18 +190,19 @@ func NewEntry(opts *NewEntryOptions) (*Entry, error) {
 			return nil, err
 		}
 
-		event := new(AnimeEntryEvent)
-		event.Entry = &Entry{
-			MediaId:             simpleAnimeEntry.MediaId,
-			Media:               simpleAnimeEntry.Media,
-			EntryListData:       simpleAnimeEntry.EntryListData,
-			EntryLibraryData:    simpleAnimeEntry.EntryLibraryData,
-			EntryDownloadInfo:   nil,
-			Episodes:            simpleAnimeEntry.Episodes,
-			NextEpisode:         simpleAnimeEntry.NextEpisode,
-			LocalFiles:          simpleAnimeEntry.LocalFiles,
-			AnidbId:             0,
-			CurrentEpisodeCount: simpleAnimeEntry.CurrentEpisodeCount,
+		event := &AnimeEntryEvent{
+			Entry: &Entry{
+				MediaId:             simpleAnimeEntry.MediaId,
+				Media:               simpleAnimeEntry.Media,
+				EntryListData:       simpleAnimeEntry.EntryListData,
+				EntryLibraryData:    simpleAnimeEntry.EntryLibraryData,
+				EntryDownloadInfo:   nil,
+				Episodes:            simpleAnimeEntry.Episodes,
+				NextEpisode:         simpleAnimeEntry.NextEpisode,
+				LocalFiles:          simpleAnimeEntry.LocalFiles,
+				AnidbId:             0,
+				CurrentEpisodeCount: simpleAnimeEntry.CurrentEpisodeCount,
+			},
 		}
 		err = hook.GlobalHookManager.OnAnimeEntry().Trigger(event)
 		if err != nil {
@@ -196,19 +213,13 @@ func NewEntry(opts *NewEntryOptions) (*Entry, error) {
 		// +--------------- End
 
 	}
+
 	entry.AnidbId = animeMetadata.GetMappings().AnidbId
 
 	// Instantiate EntryListData
 	// If the media exist in the user's anime list, add the details
 	if found {
-		entry.EntryListData = &EntryListData{
-			Progress:    anilistEntry.GetProgressSafe(),
-			Score:       anilistEntry.GetScoreSafe(),
-			Status:      anilistEntry.Status,
-			Repeat:      anilistEntry.GetRepeatSafe(),
-			StartedAt:   anilist.FuzzyDateToString(anilistEntry.StartedAt),
-			CompletedAt: anilist.FuzzyDateToString(anilistEntry.CompletedAt),
-		}
+		entry.EntryListData = NewEntryListData(anilistEntry)
 	}
 
 	// +---------------------+
@@ -218,8 +229,9 @@ func NewEntry(opts *NewEntryOptions) (*Entry, error) {
 	// Create episode entities
 	entry.hydrateEntryEpisodeData(anilistEntry, animeMetadata, opts.MetadataProvider)
 
-	event := new(AnimeEntryEvent)
-	event.Entry = entry
+	event := &AnimeEntryEvent{
+		Entry: entry,
+	}
 	err = hook.GlobalHookManager.OnAnimeEntry().Trigger(event)
 	if err != nil {
 		return nil, err
@@ -231,11 +243,11 @@ func NewEntry(opts *NewEntryOptions) (*Entry, error) {
 //----------------------------------------------------------------------------------------------------------------------
 
 // hydrateEntryEpisodeData
-// AniZipData, Media and LocalFiles should be defined
+// Metadata, Media and LocalFiles should be defined
 func (e *Entry) hydrateEntryEpisodeData(
 	anilistEntry *anilist.AnimeListEntry,
 	animeMetadata *metadata.AnimeMetadata,
-	metadataProvider metadata.Provider,
+	metadataProvider metadata_provider.Provider,
 ) {
 
 	if animeMetadata.Episodes == nil && len(animeMetadata.Episodes) == 0 {
@@ -259,20 +271,6 @@ func (e *Entry) hydrateEntryEpisodeData(
 			progressOffset = 0
 		}
 	}
-
-	//if hasDiscrepancy {
-	//	progressOffset = 1
-	//} else if possibleSpecialInclusion && !hasDiscrepancy {
-	//	// Check if the Episode 0 is set to "S1"
-	//	epZero, ok := lo.Find(e.LocalFiles, func(lf *LocalFile) bool {
-	//		return lf.Metadata.Episode == 0
-	//	})
-	//	// If there is no discrepancy, but episode 0 is set to "S1", this means that the hydrator made a mistake (due to torrent name)
-	//	// We will remap "S1" to "1" and offset other AniDB episodes by 1
-	//	if ok && epZero.Metadata.AniDBEpisode == "S1" {
-	//		progressOffset = -1 // Signal that the hydrator mistakenly set AniDB episode to "S1"
-	//	}
-	//}
 
 	// +---------------------+
 	// |       Episodes      |
@@ -320,6 +318,17 @@ func (e *Entry) hydrateEntryEpisodeData(
 		e.NextEpisode = nextEp
 	}
 
+}
+
+func NewEntryListData(anilistEntry *anilist.AnimeListEntry) *EntryListData {
+	return &EntryListData{
+		Progress:    anilistEntry.GetProgressSafe(),
+		Score:       anilistEntry.GetScoreSafe(),
+		Status:      anilistEntry.Status,
+		Repeat:      anilistEntry.GetRepeatSafe(),
+		StartedAt:   anilist.FuzzyDateToString(anilistEntry.StartedAt),
+		CompletedAt: anilist.FuzzyDateToString(anilistEntry.CompletedAt),
+	}
 }
 
 //----------------------------------------------------------------------------------------------------------------------

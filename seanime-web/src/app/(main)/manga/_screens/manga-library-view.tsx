@@ -1,4 +1,4 @@
-import { Manga_Collection, Manga_CollectionList } from "@/api/generated/types"
+import { AL_MediaListStatus, Manga_Collection, Manga_CollectionList } from "@/api/generated/types"
 import { useRefetchMangaChapterContainers } from "@/api/hooks/manga.hooks"
 import { MediaCardLazyGrid } from "@/app/(main)/_features/media/_components/media-card-grid"
 import { MediaEntryCard } from "@/app/(main)/_features/media/_components/media-entry-card"
@@ -7,16 +7,20 @@ import { SeaCommandInjectableItem, useSeaCommandInject } from "@/app/(main)/_fea
 import { seaCommand_compareMediaTitles } from "@/app/(main)/_features/sea-command/utils"
 import { __mangaLibraryHeaderImageAtom, __mangaLibraryHeaderMangaAtom } from "@/app/(main)/manga/_components/library-header"
 import { __mangaLibrary_paramsAtom, __mangaLibrary_paramsInputAtom } from "@/app/(main)/manga/_lib/handle-manga-collection"
+import { LuffyError } from "@/components/shared/luffy-error"
 import { PageWrapper } from "@/components/shared/page-wrapper"
 import { TextGenerateEffect } from "@/components/shared/text-generate-effect"
-import { IconButton } from "@/components/ui/button"
+import { Button, IconButton } from "@/components/ui/button"
+import { Carousel, CarouselContent, CarouselDotButtons } from "@/components/ui/carousel"
+import { cn } from "@/components/ui/core/styling"
 import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { useDebounce } from "@/hooks/use-debounce"
 import { getMangaCollectionTitle } from "@/lib/server/utils"
 import { ThemeLibraryScreenBannerType, useThemeSettings } from "@/lib/theme/hooks"
-import { AnimatePresence } from "framer-motion"
 import { useSetAtom } from "jotai/index"
 import { useAtom, useAtomValue } from "jotai/react"
+import { AnimatePresence } from "motion/react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import React, { memo } from "react"
 import { BiDotsVertical } from "react-icons/bi"
@@ -29,6 +33,10 @@ type MangaLibraryViewProps = {
     filteredCollection: Manga_Collection | undefined
     genres: string[]
     storedProviders: Record<string, string>
+    hasManga: boolean
+    showStatuses?: AL_MediaListStatus[]
+    type?: "carousel" | "grid"
+    withTitle?: boolean
 }
 
 export function MangaLibraryView(props: MangaLibraryViewProps) {
@@ -38,6 +46,10 @@ export function MangaLibraryView(props: MangaLibraryViewProps) {
         filteredCollection,
         genres,
         storedProviders,
+        hasManga,
+        showStatuses,
+        type = "grid",
+        withTitle = true,
         ...rest
     } = props
 
@@ -47,27 +59,49 @@ export function MangaLibraryView(props: MangaLibraryViewProps) {
         <>
             <PageWrapper
                 key="lists"
-                className="relative 2xl:order-first pb-10 p-4"
+                className="relative 2xl:order-first pb-10 p-0"
                 data-manga-library-view-container
             >
                 <div className="w-full flex justify-end">
-                    {/*<Tooltip*/}
-                    {/*    side="right"*/}
-                    {/*    trigger={<DisclosureTrigger>*/}
-                    {/*        <IconButton*/}
-                    {/*            icon={<PiBooksDuotone />}*/}
-                    {/*            intent="white-outline"*/}
-                    {/*            rounded*/}
-                    {/*        />*/}
-                    {/*    </DisclosureTrigger>}*/}
-                    {/*>Genres</Tooltip>*/}
                 </div>
 
-
                 <AnimatePresence mode="wait" initial={false}>
+
+                    {!!collection && !hasManga && <LuffyError
+                        title="No manga found"
+                    >
+                        <div className="space-y-2">
+                            <p>
+                                No manga has been added to your library yet.
+                            </p>
+
+                            <div className="!mt-4">
+                                <Link href="/discover?type=manga">
+                                    <Button intent="white-outline" rounded>
+                                        Browse manga
+                                    </Button>
+                                </Link>
+                            </div>
+                        </div>
+                    </LuffyError>}
+
                     {!params.genre?.length ?
-                        <CollectionLists key="lists" collectionList={collection} genres={genres} storedProviders={storedProviders} />
-                        : <FilteredCollectionLists key="filtered-collection" collectionList={filteredCollection} genres={genres} />
+                        <CollectionLists
+                            key="lists"
+                            collectionList={collection}
+                            genres={genres}
+                            storedProviders={storedProviders}
+                            showStatuses={showStatuses}
+                            type={type}
+                            withTitle={withTitle}
+                        />
+                        : <FilteredCollectionLists
+                            key="filtered-collection"
+                            collectionList={filteredCollection}
+                            genres={genres}
+                            showStatuses={showStatuses}
+                            type={type}
+                        />
                     }
                 </AnimatePresence>
             </PageWrapper>
@@ -75,11 +109,19 @@ export function MangaLibraryView(props: MangaLibraryViewProps) {
     )
 }
 
-export function CollectionLists({ collectionList, genres, storedProviders }: {
+export function CollectionLists({ collectionList, genres, storedProviders, showStatuses, type, withTitle }: {
     collectionList: Manga_Collection | undefined
     genres: string[]
     storedProviders: Record<string, string>
+    showStatuses?: AL_MediaListStatus[]
+    type?: "carousel" | "grid"
+    withTitle?: boolean
 }) {
+
+    const lists = collectionList?.lists?.filter(list => {
+        if (!showStatuses) return true
+        return list.type && showStatuses.includes(list.type)
+    })
 
     return (
         <PageWrapper
@@ -94,13 +136,19 @@ export function CollectionLists({ collectionList, genres, storedProviders }: {
                 },
             }}
         >
-            {collectionList?.lists?.map(collection => {
+            {lists?.map(collection => {
                 if (!collection.entries?.length) return null
                 return (
                     <React.Fragment key={collection.type}>
-                        <CollectionListItem list={collection} storedProviders={storedProviders} />
+                        <CollectionListItem
+                            list={collection}
+                            storedProviders={storedProviders}
+                            showStatuses={showStatuses}
+                            type={type}
+                            withTitle={withTitle}
+                        />
 
-                        {(collection.type === "CURRENT" && !!genres?.length) && <GenreSelector genres={genres} />}
+                        {(collection.type === "CURRENT" && !!genres?.length) && <GenreSelector genres={genres} className="!my-0" />}
                     </React.Fragment>
                 )
             })}
@@ -109,13 +157,18 @@ export function CollectionLists({ collectionList, genres, storedProviders }: {
 
 }
 
-export function FilteredCollectionLists({ collectionList, genres }: {
+export function FilteredCollectionLists({ collectionList, genres, showStatuses, type }: {
     collectionList: Manga_Collection | undefined
     genres: string[]
+    showStatuses?: AL_MediaListStatus[]
+    type?: "carousel" | "grid"
 }) {
 
     const entries = React.useMemo(() => {
-        return collectionList?.lists?.flatMap(n => n.entries).filter(Boolean) ?? []
+        return collectionList?.lists?.flatMap(n => n.entries).filter(Boolean).filter(entry => {
+            if (!showStatuses) return true
+            return entry.listData?.status && showStatuses.includes(entry.listData.status)
+        }) ?? []
     }, [collectionList])
 
     return (
@@ -136,7 +189,7 @@ export function FilteredCollectionLists({ collectionList, genres }: {
                 <GenreSelector genres={genres} />
             </div>}
 
-            <MediaCardLazyGrid itemCount={entries?.length || 0}>
+            {type === "grid" && <MediaCardLazyGrid itemCount={entries?.length || 0}>
                 {entries.map(entry => {
                     return <div
                         key={entry.media?.id}
@@ -150,13 +203,43 @@ export function FilteredCollectionLists({ collectionList, genres }: {
                         />
                     </div>
                 })}
-            </MediaCardLazyGrid>
+            </MediaCardLazyGrid>}
+            {type === "carousel" && <Carousel
+                className={cn("w-full max-w-full !mt-0")}
+                gap="xl"
+                opts={{
+                    align: "start",
+                    dragFree: true,
+                }}
+                autoScroll={false}
+            >
+                <CarouselDotButtons className="-top-2" />
+                <CarouselContent className="px-6">
+                    {entries.map(entry => {
+                        return <MediaEntryCard
+                            key={entry.media?.id}
+                            media={entry.media!}
+                            listData={entry.listData}
+                            showListDataButton
+                            withAudienceScore={false}
+                            type="manga"
+                            containerClassName={type === "carousel" ? "basis-[200px] md:basis-[250px] mx-2 mt-8 mb-0" : undefined}
+                        />
+                    })}
+                </CarouselContent>
+            </Carousel>}
         </PageWrapper>
     )
 
 }
 
-const CollectionListItem = memo(({ list, storedProviders }: { list: Manga_CollectionList, storedProviders: Record<string, string> }) => {
+const CollectionListItem = memo(({ list, storedProviders, showStatuses, type, withTitle }: {
+    list: Manga_CollectionList,
+    storedProviders: Record<string, string>,
+    showStatuses?: AL_MediaListStatus[],
+    type?: "carousel" | "grid",
+    withTitle?: boolean
+}) => {
 
     const ts = useThemeSettings()
     const [currentHeaderImage, setCurrentHeaderImage] = useAtom(__mangaLibraryHeaderImageAtom)
@@ -187,7 +270,7 @@ const CollectionListItem = memo(({ list, storedProviders }: { list: Manga_Collec
                     heading: "Currently Reading",
                     priority: 100,
                     render: () => (
-                        <CommandItemMedia media={entry.media!} />
+                        <CommandItemMedia media={entry.media!} type="manga" />
                     ),
                     onSelect: () => {
                         router.push(`/manga/entry?id=${entry.mediaId}`)
@@ -212,6 +295,22 @@ const CollectionListItem = memo(({ list, storedProviders }: { list: Manga_Collec
                     list.type)}</h2>
                 <div className="flex flex-1" data-manga-library-view-collection-list-item-header-spacer></div>
 
+                {list.type === "CURRENT" && params.unreadOnly && (
+                    <Button
+                        intent="white-link"
+                        size="xs"
+                        className="!px-2 !py-1"
+                        onClick={() => {
+                            setParams(draft => {
+                                draft.unreadOnly = false
+                                return
+                            })
+                        }}
+                    >
+                        Show all
+                    </Button>
+                )}
+
                 {list.type === "CURRENT" && <DropdownMenu
                     trigger={<div className="relative">
                         <IconButton
@@ -221,7 +320,7 @@ const CollectionListItem = memo(({ list, storedProviders }: { list: Manga_Collec
                             icon={<BiDotsVertical />}
                             // loading={isRefetchingMangaChapterContainers}
                         />
-                        {params.unreadOnly && <div className="absolute -top-1 -right-1 bg-[--blue] size-2 rounded-full"></div>}
+                        {/*{params.unreadOnly && <div className="absolute -top-1 -right-1 bg-[--blue] size-2 rounded-full"></div>}*/}
                         {isRefetchingMangaChapterContainers &&
                             <div className="absolute -top-1 -right-1 bg-[--orange] size-3 rounded-full animate-ping"></div>}
                     </div>}
@@ -252,7 +351,7 @@ const CollectionListItem = memo(({ list, storedProviders }: { list: Manga_Collec
 
             </div>
 
-            {(list.type === "CURRENT" && ts.libraryScreenBannerType === ThemeLibraryScreenBannerType.Dynamic && headerManga) &&
+            {(list.type === "CURRENT" && ts.libraryScreenBannerType === ThemeLibraryScreenBannerType.Dynamic && headerManga && withTitle) &&
                 <TextGenerateEffect
                     data-manga-library-view-collection-list-item-header-media-title
                     words={headerManga?.title?.userPreferred || ""}
@@ -260,7 +359,7 @@ const CollectionListItem = memo(({ list, storedProviders }: { list: Manga_Collec
                 />
             }
 
-            <MediaCardLazyGrid itemCount={list.entries?.length ?? 0}>
+            {type === "grid" && <MediaCardLazyGrid itemCount={list.entries?.length ?? 0}>
                 {list.entries?.map(entry => {
                     return <div
                         key={entry.media?.id}
@@ -281,14 +380,52 @@ const CollectionListItem = memo(({ list, storedProviders }: { list: Manga_Collec
                         />
                     </div>
                 })}
-            </MediaCardLazyGrid>
+            </MediaCardLazyGrid>}
+            {type === "carousel" && <Carousel
+                className={cn("w-full max-w-full !mt-0")}
+                gap="xl"
+                opts={{
+                    align: "start",
+                    dragFree: true,
+                }}
+                autoScroll={false}
+            >
+                <CarouselDotButtons className="-top-2" />
+                <CarouselContent className="px-6">
+                    {list.entries?.map(entry => {
+                        return <div
+                            key={entry.media?.id}
+                            className={type === "carousel"
+                                ? "relative basis-[200px] col-span-1 place-content-stretch flex-none md:basis-[250px] mx-2 mt-8 mb-0"
+                                : undefined}
+                            onMouseEnter={() => {
+                                if (list.type === "CURRENT" && entry.media?.bannerImage) {
+                                    React.startTransition(() => {
+                                        setCurrentHeaderImage(entry.media?.bannerImage!)
+                                    })
+                                }
+                            }}
+                        >
+                            <MediaEntryCard
+                                key={entry.media?.id}
+                                media={entry.media!}
+                                listData={entry.listData}
+                                showListDataButton
+                                withAudienceScore={false}
+                                type="manga"
+                            />
+                        </div>
+                    })}
+                </CarouselContent>
+            </Carousel>}
         </React.Fragment>
     )
 })
 
 function GenreSelector({
     genres,
-}: { genres: string[] }) {
+    className,
+}: { genres: string[], className?: string }) {
     const [params, setParams] = useAtom(__mangaLibrary_paramsInputAtom)
     const setActualParams = useSetAtom(__mangaLibrary_paramsAtom)
     const debouncedParams = useDebounce(params, 200)
@@ -301,6 +438,7 @@ function GenreSelector({
 
     return (
         <MediaGenreSelector
+            className={cn(className)}
             // className="bg-gray-950 border p-0 rounded-xl mx-auto"
             staticTabsClass=""
             items={[

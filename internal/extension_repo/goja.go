@@ -19,6 +19,7 @@ import (
 	gojarequire "github.com/dop251/goja_nodejs/require"
 	gojaurl "github.com/dop251/goja_nodejs/url"
 	"github.com/evanw/esbuild/pkg/api"
+	"github.com/mmcdole/gofeed"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cast"
 )
@@ -62,7 +63,7 @@ func ShareBinds(vm *goja.Runtime, logger *zerolog.Logger) {
 	registry := new(gojarequire.Registry)
 	registry.Enable(vm)
 
-	fm := goja_bindings.DefaultFieldMapper{}
+	fm := FieldMapper{}
 	vm.SetFieldNameMapper(fm)
 	// goja.TagFieldNameMapper("json", true)
 
@@ -85,6 +86,8 @@ func ShareBinds(vm *goja.Runtime, logger *zerolog.Logger) {
 			logger.Error().Err(err).Str("name", binding.name).Msg("failed to bind")
 		}
 	}
+
+	vm.Set("__isOffline__", plugin.GlobalAppContext.IsOffline())
 
 	vm.Set("$toString", func(raw any, maxReaderBytes int) (string, error) {
 		switch v := raw.(type) {
@@ -166,6 +169,14 @@ func ShareBinds(vm *goja.Runtime, logger *zerolog.Logger) {
 		return json.Unmarshal(raw, &dst)
 	})
 
+	vm.Set("$toPointer", func(data interface{}) interface{} {
+		if data == nil {
+			return nil
+		}
+		v := data
+		return &v
+	})
+
 	vm.Set("$Context", func(call goja.ConstructorCall) *goja.Object {
 		var instance context.Context
 
@@ -187,12 +198,29 @@ func ShareBinds(vm *goja.Runtime, logger *zerolog.Logger) {
 		return instanceValue
 	})
 
+	//
+	// Habari
+	//
 	habariObj := vm.NewObject()
 	_ = habariObj.Set("parse", func(filename string) *habari.Metadata {
 		return habari.Parse(filename)
 	})
 	vm.Set("$habari", habariObj)
 
+	//
+	// GoFeed
+	//
+	gofeedObj := vm.NewObject()
+	_ = gofeedObj.Set("parse", func(str string) *gofeed.Feed {
+		gofeedParser := gofeed.NewParser()
+		feed, _ := gofeedParser.ParseString(str)
+		return feed
+	})
+	vm.Set("$goFeed", gofeedObj)
+
+	//
+	// Anime Utils
+	//
 	animeUtilsObj := vm.NewObject()
 	_ = animeUtilsObj.Set("newLocalFileWrapper", func(lfs []*anime.LocalFile) *anime.LocalFileWrapper {
 		return anime.NewLocalFileWrapper(lfs)

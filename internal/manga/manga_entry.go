@@ -1,10 +1,10 @@
 package manga
 
 import (
+	"context"
 	"errors"
 	"seanime/internal/api/anilist"
 	"seanime/internal/hook"
-	"seanime/internal/platforms/anilist_platform"
 	"seanime/internal/platforms/platform"
 	"seanime/internal/util/filecache"
 
@@ -41,7 +41,7 @@ type (
 )
 
 // NewEntry creates a new manga entry.
-func NewEntry(opts *NewEntryOptions) (entry *Entry, err error) {
+func NewEntry(ctx context.Context, opts *NewEntryOptions) (entry *Entry, err error) {
 	entry = &Entry{
 		MediaId: opts.MediaId,
 	}
@@ -77,7 +77,7 @@ func NewEntry(opts *NewEntryOptions) (entry *Entry, err error) {
 
 	// If the entry is not found, we fetch the manga from the Anilist API.
 	if !found {
-		media, err := opts.Platform.GetManga(opts.MediaId)
+		media, err := opts.Platform.GetManga(ctx, opts.MediaId)
 		if err != nil {
 			return nil, err
 		}
@@ -85,7 +85,7 @@ func NewEntry(opts *NewEntryOptions) (entry *Entry, err error) {
 
 	} else {
 		// If the entry is found, we use the entry from the collection.
-		mangaEvent := new(anilist_platform.GetMangaEvent)
+		mangaEvent := new(platform.GetMangaEvent)
 		mangaEvent.Manga = anilistEntry.GetMedia()
 		err := hook.GlobalHookManager.OnGetManga().Trigger(mangaEvent)
 		if err != nil {

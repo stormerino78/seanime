@@ -425,6 +425,15 @@
           "typescriptType": "boolean",
           "required": false,
           "descriptions": []
+        },
+        {
+          "name": "CountryOfOrigin",
+          "jsonName": "countryOfOrigin",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": false,
+          "descriptions": []
         }
       ],
       "returns": "anilist.ListAnime",
@@ -587,6 +596,111 @@
     }
   },
   {
+    "name": "HandleGetAnilistCacheLayerStatus",
+    "trimmedName": "GetAnilistCacheLayerStatus",
+    "comments": [
+      "HandleGetAnilistCacheLayerStatus",
+      "",
+      "\t@summary returns the status of the AniList cache layer.",
+      "\t@desc This returns the status of the AniList cache layer.",
+      "\t@route /api/v1/anilist/cache-layer/status [GET]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/anilist.go",
+    "filename": "anilist.go",
+    "api": {
+      "summary": "returns the status of the AniList cache layer.",
+      "descriptions": [
+        "This returns the status of the AniList cache layer."
+      ],
+      "endpoint": "/api/v1/anilist/cache-layer/status",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleToggleAnilistCacheLayerStatus",
+    "trimmedName": "ToggleAnilistCacheLayerStatus",
+    "comments": [
+      "HandleToggleAnilistCacheLayerStatus",
+      "",
+      "\t@summary toggles the status of the AniList cache layer.",
+      "\t@desc This toggles the status of the AniList cache layer.",
+      "\t@route /api/v1/anilist/cache-layer/status [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/anilist.go",
+    "filename": "anilist.go",
+    "api": {
+      "summary": "toggles the status of the AniList cache layer.",
+      "descriptions": [
+        "This toggles the status of the AniList cache layer."
+      ],
+      "endpoint": "/api/v1/anilist/cache-layer/status",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleGetAnimeEpisodeCollection",
+    "trimmedName": "GetAnimeEpisodeCollection",
+    "comments": [
+      "HandleGetAnimeEpisodeCollection",
+      "",
+      "\t@summary gets list of main episodes",
+      "\t@desc This returns a list of main episodes for the given AniList anime media id.",
+      "\t@desc It also loads the episode list into the different modules.",
+      "\t@returns anime.EpisodeCollection",
+      "\t@param id - int - true - \"AniList anime media ID\"",
+      "\t@route /api/v1/anime/episode-collection/{id} [GET]",
+      ""
+    ],
+    "filepath": "internal/handlers/anime.go",
+    "filename": "anime.go",
+    "api": {
+      "summary": "gets list of main episodes",
+      "descriptions": [
+        "This returns a list of main episodes for the given AniList anime media id.",
+        "It also loads the episode list into the different modules."
+      ],
+      "endpoint": "/api/v1/anime/episode-collection/{id}",
+      "methods": [
+        "GET"
+      ],
+      "params": [
+        {
+          "name": "id",
+          "jsonName": "id",
+          "goType": "int",
+          "usedStructType": "",
+          "typescriptType": "number",
+          "required": true,
+          "descriptions": [
+            "AniList anime media ID"
+          ]
+        }
+      ],
+      "bodyFields": [],
+      "returns": "anime.EpisodeCollection",
+      "returnGoType": "anime.EpisodeCollection",
+      "returnTypescriptType": "Anime_EpisodeCollection"
+    }
+  },
+  {
     "name": "HandleGetLibraryCollection",
     "trimmedName": "GetLibraryCollection",
     "comments": [
@@ -621,6 +735,36 @@
       "returns": "anime.LibraryCollection",
       "returnGoType": "anime.LibraryCollection",
       "returnTypescriptType": "Anime_LibraryCollection"
+    }
+  },
+  {
+    "name": "HandleGetAnimeCollectionSchedule",
+    "trimmedName": "GetAnimeCollectionSchedule",
+    "comments": [
+      "HandleGetAnimeCollectionSchedule",
+      "",
+      "\t@summary returns anime collection schedule",
+      "\t@desc This is used by the \"Schedule\" page to display the anime schedule.",
+      "\t@route /api/v1/library/schedule [GET]",
+      "\t@returns []anime.ScheduleItem",
+      ""
+    ],
+    "filepath": "internal/handlers/anime_collection.go",
+    "filename": "anime_collection.go",
+    "api": {
+      "summary": "returns anime collection schedule",
+      "descriptions": [
+        "This is used by the \"Schedule\" page to display the anime schedule."
+      ],
+      "endpoint": "/api/v1/library/schedule",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "[]anime.ScheduleItem",
+      "returnGoType": "anime.ScheduleItem",
+      "returnTypescriptType": "Array\u003cAnime_ScheduleItem\u003e"
     }
   },
   {
@@ -1764,6 +1908,140 @@
     }
   },
   {
+    "name": "HandleCustomSourceListAnime",
+    "trimmedName": "CustomSourceListAnime",
+    "comments": [
+      "HandleCustomSourceListAnime",
+      "",
+      "\t@summary returns a paginated list of anime from the provider.",
+      "\t@desc This will search for media from the provider.",
+      "\t@route /api/v1/custom-source/provider/list/anime [POST]",
+      "\t@returns hibikecustomsource.ListAnimeResponse",
+      ""
+    ],
+    "filepath": "internal/handlers/custom_source.go",
+    "filename": "custom_source.go",
+    "api": {
+      "summary": "returns a paginated list of anime from the provider.",
+      "descriptions": [
+        "This will search for media from the provider."
+      ],
+      "endpoint": "/api/v1/custom-source/provider/list/anime",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "Provider",
+          "jsonName": "provider",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "Search",
+          "jsonName": "search",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "Page",
+          "jsonName": "page",
+          "goType": "int",
+          "usedStructType": "",
+          "typescriptType": "number",
+          "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "PerPage",
+          "jsonName": "perPage",
+          "goType": "int",
+          "usedStructType": "",
+          "typescriptType": "number",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "hibikecustomsource.ListAnimeResponse",
+      "returnGoType": "hibikecustomsource.ListAnimeResponse",
+      "returnTypescriptType": "HibikeCustomSource_ListAnimeResponse"
+    }
+  },
+  {
+    "name": "HandleCustomSourceListManga",
+    "trimmedName": "CustomSourceListManga",
+    "comments": [
+      "HandleCustomSourceListManga",
+      "",
+      "\t@summary returns a paginated list of manga from the provider.",
+      "\t@desc This will search for media from the provider.",
+      "\t@route /api/v1/custom-source/provider/list/manga [POST]",
+      "\t@returns hibikecustomsource.ListMangaResponse",
+      ""
+    ],
+    "filepath": "internal/handlers/custom_source.go",
+    "filename": "custom_source.go",
+    "api": {
+      "summary": "returns a paginated list of manga from the provider.",
+      "descriptions": [
+        "This will search for media from the provider."
+      ],
+      "endpoint": "/api/v1/custom-source/provider/list/manga",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "Provider",
+          "jsonName": "provider",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "Search",
+          "jsonName": "search",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "Page",
+          "jsonName": "page",
+          "goType": "int",
+          "usedStructType": "",
+          "typescriptType": "number",
+          "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "PerPage",
+          "jsonName": "perPage",
+          "goType": "int",
+          "usedStructType": "",
+          "typescriptType": "number",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "hibikecustomsource.ListMangaResponse",
+      "returnGoType": "hibikecustomsource.ListMangaResponse",
+      "returnTypescriptType": "HibikeCustomSource_ListMangaResponse"
+    }
+  },
+  {
     "name": "HandleGetDebridSettings",
     "trimmedName": "GetDebridSettings",
     "comments": [
@@ -2252,6 +2530,15 @@
           "typescriptType": "string",
           "required": true,
           "descriptions": []
+        },
+        {
+          "name": "BatchEpisodeFiles",
+          "jsonName": "batchEpisodeFiles",
+          "goType": "hibiketorrent.BatchEpisodeFiles",
+          "usedStructType": "hibiketorrent.BatchEpisodeFiles",
+          "typescriptType": "HibikeTorrent_BatchEpisodeFiles",
+          "required": false,
+          "descriptions": []
         }
       ],
       "returns": "bool",
@@ -2341,6 +2628,55 @@
       "returns": "handlers.DirectorySelectorResponse",
       "returnGoType": "handlers.DirectorySelectorResponse",
       "returnTypescriptType": "DirectorySelectorResponse"
+    }
+  },
+  {
+    "name": "HandleDirectstreamPlayLocalFile",
+    "trimmedName": "DirectstreamPlayLocalFile",
+    "comments": [
+      "HandleDirectstreamPlayLocalFile",
+      "",
+      "\t@summary request local file stream.",
+      "\t@desc This requests a local file stream and returns the media container to start the playback.",
+      "\t@returns mediastream.MediaContainer",
+      "\t@route /api/v1/directstream/play/localfile [POST]",
+      ""
+    ],
+    "filepath": "internal/handlers/directstream.go",
+    "filename": "directstream.go",
+    "api": {
+      "summary": "request local file stream.",
+      "descriptions": [
+        "This requests a local file stream and returns the media container to start the playback."
+      ],
+      "endpoint": "/api/v1/directstream/play/localfile",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "Path",
+          "jsonName": "path",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "ClientId",
+          "jsonName": "clientId",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "mediastream.MediaContainer",
+      "returnGoType": "mediastream.MediaContainer",
+      "returnTypescriptType": "Mediastream_MediaContainer"
     }
   },
   {
@@ -2818,6 +3154,52 @@
     }
   },
   {
+    "name": "HandleDownloadMacDenshiUpdate",
+    "trimmedName": "DownloadMacDenshiUpdate",
+    "comments": [
+      "HandleDownloadMacDenshiUpdate",
+      "",
+      "\t@summary downloads, extracts, and installs macOS update, then closes the app",
+      "\t@route /api/v1/download-mac-denshi-update [POST]",
+      "\t@returns handlers.DownloadReleaseResponse",
+      ""
+    ],
+    "filepath": "internal/handlers/download.go",
+    "filename": "download.go",
+    "api": {
+      "summary": "downloads, extracts, and installs macOS update, then closes the app",
+      "descriptions": [],
+      "endpoint": "/api/v1/download-mac-denshi-update",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "DownloadUrl",
+          "jsonName": "download_url",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "Version",
+          "jsonName": "version",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "handlers.DownloadReleaseResponse",
+      "returnGoType": "handlers.DownloadReleaseResponse",
+      "returnTypescriptType": "DownloadReleaseResponse"
+    }
+  },
+  {
     "name": "HandleOpenInExplorer",
     "trimmedName": "OpenInExplorer",
     "comments": [
@@ -2929,6 +3311,52 @@
       "returns": "extension_repo.ExtensionInstallResponse",
       "returnGoType": "extension_repo.ExtensionInstallResponse",
       "returnTypescriptType": "ExtensionRepo_ExtensionInstallResponse"
+    }
+  },
+  {
+    "name": "HandleInstallExternalExtensionRepository",
+    "trimmedName": "InstallExternalExtensionRepository",
+    "comments": [
+      "HandleInstallExternalExtensionRepository",
+      "",
+      "\t@summary installs the extensions from the given repository uri.",
+      "\t@route /api/v1/extensions/external/install-repository [POST]",
+      "\t@returns extension_repo.RepositoryInstallResponse",
+      ""
+    ],
+    "filepath": "internal/handlers/extensions.go",
+    "filename": "extensions.go",
+    "api": {
+      "summary": "installs the extensions from the given repository uri.",
+      "descriptions": [],
+      "endpoint": "/api/v1/extensions/external/install-repository",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "RepositoryURI",
+          "jsonName": "repositoryUri",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "Install",
+          "jsonName": "install",
+          "goType": "bool",
+          "usedStructType": "",
+          "typescriptType": "boolean",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "extension_repo.RepositoryInstallResponse",
+      "returnGoType": "extension_repo.RepositoryInstallResponse",
+      "returnTypescriptType": "ExtensionRepo_RepositoryInstallResponse"
     }
   },
   {
@@ -3305,6 +3733,33 @@
     }
   },
   {
+    "name": "HandleListCustomSourceExtensions",
+    "trimmedName": "ListCustomSourceExtensions",
+    "comments": [
+      "HandleListCustomSourceExtensions",
+      "",
+      "\t@summary returns the installed torrent providers.",
+      "\t@route /api/v1/extensions/list/custom-source [GET]",
+      "\t@returns []extension_repo.CustomSourceExtensionItem",
+      ""
+    ],
+    "filepath": "internal/handlers/extensions.go",
+    "filename": "extensions.go",
+    "api": {
+      "summary": "returns the installed torrent providers.",
+      "descriptions": [],
+      "endpoint": "/api/v1/extensions/list/custom-source",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "[]extension_repo.CustomSourceExtensionItem",
+      "returnGoType": "extension_repo.CustomSourceExtensionItem",
+      "returnTypescriptType": "Array\u003cExtensionRepo_CustomSourceExtensionItem\u003e"
+    }
+  },
+  {
     "name": "HandleGetPluginSettings",
     "trimmedName": "GetPluginSettings",
     "comments": [
@@ -3393,6 +3848,15 @@
         {
           "name": "ID",
           "jsonName": "id",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "ClientId",
+          "jsonName": "clientId",
           "goType": "string",
           "usedStructType": "",
           "typescriptType": "string",
@@ -3535,7 +3999,7 @@
       "",
       "\t@summary returns the marketplace extensions.",
       "\t@route /api/v1/extensions/marketplace [GET]",
-      "\t@returns []extension_repo.MarketplaceExtension",
+      "\t@returns []extension.Extension",
       ""
     ],
     "filepath": "internal/handlers/extensions.go",
@@ -3549,9 +4013,9 @@
       ],
       "params": [],
       "bodyFields": [],
-      "returns": "[]extension_repo.MarketplaceExtension",
-      "returnGoType": "extension_repo.MarketplaceExtension",
-      "returnTypescriptType": "Array\u003cExtensionRepo_MarketplaceExtension\u003e"
+      "returns": "[]extension.Extension",
+      "returnGoType": "extension.Extension",
+      "returnTypescriptType": "Array\u003cExtension_Extension\u003e"
     }
   },
   {
@@ -3687,6 +4151,520 @@
     }
   },
   {
+    "name": "HandleGetLibraryExplorerFileTree",
+    "trimmedName": "GetLibraryExplorerFileTree",
+    "comments": [
+      "HandleGetLibraryExplorerFileTree",
+      "",
+      "\t@summary returns the file tree structure of the library directories.",
+      "\t@desc This returns a hierarchical representation of all directories and media files in the library.",
+      "\t@desc The tree includes LocalFile associations and media IDs for each file and directory.",
+      "\t@route /api/v1/library/explorer/file-tree [GET]",
+      "\t@returns library_explorer.FileTreeJSON",
+      ""
+    ],
+    "filepath": "internal/handlers/library_explorer.go",
+    "filename": "library_explorer.go",
+    "api": {
+      "summary": "returns the file tree structure of the library directories.",
+      "descriptions": [
+        "This returns a hierarchical representation of all directories and media files in the library.",
+        "The tree includes LocalFile associations and media IDs for each file and directory."
+      ],
+      "endpoint": "/api/v1/library/explorer/file-tree",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "library_explorer.FileTreeJSON",
+      "returnGoType": "library_explorer.FileTreeJSON",
+      "returnTypescriptType": "LibraryExplorer_FileTreeJSON"
+    }
+  },
+  {
+    "name": "HandleRefreshLibraryExplorerFileTree",
+    "trimmedName": "RefreshLibraryExplorerFileTree",
+    "comments": [
+      "HandleRefreshLibraryExplorerFileTree",
+      "",
+      "\t@summary refreshes the file tree structure of the library directories.",
+      "\t@desc This clears the cached file tree and rebuilds it from the current library state.",
+      "\t@desc Use this when the library structure has changed and you want to update the tree.",
+      "\t@route /api/v1/library/explorer/file-tree/refresh [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/library_explorer.go",
+    "filename": "library_explorer.go",
+    "api": {
+      "summary": "refreshes the file tree structure of the library directories.",
+      "descriptions": [
+        "This clears the cached file tree and rebuilds it from the current library state.",
+        "Use this when the library structure has changed and you want to update the tree."
+      ],
+      "endpoint": "/api/v1/library/explorer/file-tree/refresh",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleLoadLibraryExplorerDirectoryChildren",
+    "trimmedName": "LoadLibraryExplorerDirectoryChildren",
+    "comments": [
+      "HandleLoadLibraryExplorerDirectoryChildren",
+      "",
+      "\t@summary loads the children of a specific directory into the file tree.",
+      "\t@desc This endpoint loads directory children into the cached file tree. Frontend should re-fetch the tree afterwards.",
+      "\t@desc The directory path must be within the configured library paths for security.",
+      "\t@route /api/v1/library/explorer/directory-children [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/library_explorer.go",
+    "filename": "library_explorer.go",
+    "api": {
+      "summary": "loads the children of a specific directory into the file tree.",
+      "descriptions": [
+        "This endpoint loads directory children into the cached file tree. Frontend should re-fetch the tree afterwards.",
+        "The directory path must be within the configured library paths for security."
+      ],
+      "endpoint": "/api/v1/library/explorer/directory-children",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "DirectoryPath",
+          "jsonName": "directoryPath",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleSetOfflineMode",
+    "trimmedName": "SetOfflineMode",
+    "comments": [
+      "HandleSetOfflineMode",
+      "",
+      "\t@summary sets the offline mode.",
+      "\t@desc Returns true if the offline mode is active, false otherwise.",
+      "\t@route /api/v1/local/offline [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/local.go",
+    "filename": "local.go",
+    "api": {
+      "summary": "sets the offline mode.",
+      "descriptions": [
+        "Returns true if the offline mode is active, false otherwise."
+      ],
+      "endpoint": "/api/v1/local/offline",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "Enabled",
+          "jsonName": "enabled",
+          "goType": "bool",
+          "usedStructType": "",
+          "typescriptType": "boolean",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleLocalGetTrackedMediaItems",
+    "trimmedName": "LocalGetTrackedMediaItems",
+    "comments": [
+      "HandleLocalGetTrackedMediaItems",
+      "",
+      "\t@summary gets all tracked media.",
+      "\t@route /api/v1/local/track [GET]",
+      "\t@returns []local.TrackedMediaItem",
+      ""
+    ],
+    "filepath": "internal/handlers/local.go",
+    "filename": "local.go",
+    "api": {
+      "summary": "gets all tracked media.",
+      "descriptions": [],
+      "endpoint": "/api/v1/local/track",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "[]local.TrackedMediaItem",
+      "returnGoType": "local.TrackedMediaItem",
+      "returnTypescriptType": "Array\u003cLocal_TrackedMediaItem\u003e"
+    }
+  },
+  {
+    "name": "HandleLocalAddTrackedMedia",
+    "trimmedName": "LocalAddTrackedMedia",
+    "comments": [
+      "HandleLocalAddTrackedMedia",
+      "",
+      "\t@summary adds one or multiple media to be tracked for offline sync.",
+      "\t@route /api/v1/local/track [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/local.go",
+    "filename": "local.go",
+    "api": {
+      "summary": "adds one or multiple media to be tracked for offline sync.",
+      "descriptions": [],
+      "endpoint": "/api/v1/local/track",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "Media",
+          "jsonName": "media",
+          "goType": "[]__STRUCT__",
+          "inlineStructType": "[]struct{\nMediaId int `json:\"mediaId\"`\nType string `json:\"type\"`}",
+          "usedStructType": "",
+          "typescriptType": "Array\u003c{ mediaId: number; type: string; }\u003e",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleLocalRemoveTrackedMedia",
+    "trimmedName": "LocalRemoveTrackedMedia",
+    "comments": [
+      "HandleLocalRemoveTrackedMedia",
+      "",
+      "\t@summary remove media from being tracked for offline sync.",
+      "\t@desc This will remove anime from being tracked for offline sync and delete any associated data.",
+      "\t@route /api/v1/local/track [DELETE]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/local.go",
+    "filename": "local.go",
+    "api": {
+      "summary": "remove media from being tracked for offline sync.",
+      "descriptions": [
+        "This will remove anime from being tracked for offline sync and delete any associated data."
+      ],
+      "endpoint": "/api/v1/local/track",
+      "methods": [
+        "DELETE"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "MediaId",
+          "jsonName": "mediaId",
+          "goType": "int",
+          "usedStructType": "",
+          "typescriptType": "number",
+          "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "Type",
+          "jsonName": "type",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleLocalGetIsMediaTracked",
+    "trimmedName": "LocalGetIsMediaTracked",
+    "comments": [
+      "HandleLocalGetIsMediaTracked",
+      "",
+      "\t@summary checks if media is being tracked for offline sync.",
+      "\t@route /api/v1/local/track/{id}/{type} [GET]",
+      "\t@param id - int - true - \"AniList anime media ID\"",
+      "\t@param type - string - true - \"Type of media (anime/manga)\"",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/local.go",
+    "filename": "local.go",
+    "api": {
+      "summary": "checks if media is being tracked for offline sync.",
+      "descriptions": [],
+      "endpoint": "/api/v1/local/track/{id}/{type}",
+      "methods": [
+        "GET"
+      ],
+      "params": [
+        {
+          "name": "id",
+          "jsonName": "id",
+          "goType": "int",
+          "usedStructType": "",
+          "typescriptType": "number",
+          "required": true,
+          "descriptions": [
+            "AniList anime media ID"
+          ]
+        },
+        {
+          "name": "type",
+          "jsonName": "type",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": [
+            "Type of media (anime/manga)"
+          ]
+        }
+      ],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleLocalSyncData",
+    "trimmedName": "LocalSyncData",
+    "comments": [
+      "HandleLocalSyncData",
+      "",
+      "\t@summary syncs local data with AniList.",
+      "\t@route /api/v1/local/local [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/local.go",
+    "filename": "local.go",
+    "api": {
+      "summary": "syncs local data with AniList.",
+      "descriptions": [],
+      "endpoint": "/api/v1/local/local",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleLocalGetSyncQueueState",
+    "trimmedName": "LocalGetSyncQueueState",
+    "comments": [
+      "HandleLocalGetSyncQueueState",
+      "",
+      "\t@summary gets the current sync queue state.",
+      "\t@desc This will return the list of media that are currently queued for syncing.",
+      "\t@route /api/v1/local/queue [GET]",
+      "\t@returns local.QueueState",
+      ""
+    ],
+    "filepath": "internal/handlers/local.go",
+    "filename": "local.go",
+    "api": {
+      "summary": "gets the current sync queue state.",
+      "descriptions": [
+        "This will return the list of media that are currently queued for syncing."
+      ],
+      "endpoint": "/api/v1/local/queue",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "local.QueueState",
+      "returnGoType": "local.QueueState",
+      "returnTypescriptType": "Local_QueueState"
+    }
+  },
+  {
+    "name": "HandleLocalSyncAnilistData",
+    "trimmedName": "LocalSyncAnilistData",
+    "comments": [
+      "HandleLocalSyncAnilistData",
+      "",
+      "\t@summary syncs AniList data with local.",
+      "\t@route /api/v1/local/anilist [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/local.go",
+    "filename": "local.go",
+    "api": {
+      "summary": "syncs AniList data with local.",
+      "descriptions": [],
+      "endpoint": "/api/v1/local/anilist",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleLocalSetHasLocalChanges",
+    "trimmedName": "LocalSetHasLocalChanges",
+    "comments": [
+      "HandleLocalSetHasLocalChanges",
+      "",
+      "\t@summary sets the flag to determine if there are local changes that need to be synced with AniList.",
+      "\t@route /api/v1/local/updated [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/local.go",
+    "filename": "local.go",
+    "api": {
+      "summary": "sets the flag to determine if there are local changes that need to be synced with AniList.",
+      "descriptions": [],
+      "endpoint": "/api/v1/local/updated",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "Updated",
+          "jsonName": "updated",
+          "goType": "bool",
+          "usedStructType": "",
+          "typescriptType": "boolean",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleLocalGetHasLocalChanges",
+    "trimmedName": "LocalGetHasLocalChanges",
+    "comments": [
+      "HandleLocalGetHasLocalChanges",
+      "",
+      "\t@summary gets the flag to determine if there are local changes that need to be synced with AniList.",
+      "\t@route /api/v1/local/updated [GET]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/local.go",
+    "filename": "local.go",
+    "api": {
+      "summary": "gets the flag to determine if there are local changes that need to be synced with AniList.",
+      "descriptions": [],
+      "endpoint": "/api/v1/local/updated",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleLocalGetLocalStorageSize",
+    "trimmedName": "LocalGetLocalStorageSize",
+    "comments": [
+      "HandleLocalGetLocalStorageSize",
+      "",
+      "\t@summary gets the size of the local storage in a human-readable format.",
+      "\t@route /api/v1/local/storage/size [GET]",
+      "\t@returns string",
+      ""
+    ],
+    "filepath": "internal/handlers/local.go",
+    "filename": "local.go",
+    "api": {
+      "summary": "gets the size of the local storage in a human-readable format.",
+      "descriptions": [],
+      "endpoint": "/api/v1/local/storage/size",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "string",
+      "returnGoType": "string",
+      "returnTypescriptType": "string"
+    }
+  },
+  {
+    "name": "HandleLocalSyncSimulatedDataToAnilist",
+    "trimmedName": "LocalSyncSimulatedDataToAnilist",
+    "comments": [
+      "HandleLocalSyncSimulatedDataToAnilist",
+      "",
+      "\t@summary syncs the simulated data to AniList.",
+      "\t@route /api/v1/local/sync-simulated-to-anilist [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/local.go",
+    "filename": "local.go",
+    "api": {
+      "summary": "syncs the simulated data to AniList.",
+      "descriptions": [],
+      "endpoint": "/api/v1/local/sync-simulated-to-anilist",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
     "name": "HandleGetLocalFiles",
     "trimmedName": "GetLocalFiles",
     "comments": [
@@ -3752,8 +4730,8 @@
           "descriptions": []
         }
       ],
-      "returns": "boolean",
-      "returnGoType": "boolean",
+      "returns": "bool",
+      "returnGoType": "bool",
       "returnTypescriptType": "boolean"
     }
   },
@@ -3875,6 +4853,46 @@
       "returns": "[]anime.LocalFile",
       "returnGoType": "anime.LocalFile",
       "returnTypescriptType": "Array\u003cAnime_LocalFile\u003e"
+    }
+  },
+  {
+    "name": "HandleSuperUpdateLocalFiles",
+    "trimmedName": "SuperUpdateLocalFiles",
+    "comments": [
+      "HandleSuperUpdateLocalFiles",
+      "",
+      "\t@summary updates local files with the given paths.",
+      "\t@desc The client should refetch the entire library collection and media entry.",
+      "\t@route /api/v1/library/local-files/super-update [PATCH]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/localfiles.go",
+    "filename": "localfiles.go",
+    "api": {
+      "summary": "updates local files with the given paths.",
+      "descriptions": [
+        "The client should refetch the entire library collection and media entry."
+      ],
+      "endpoint": "/api/v1/library/local-files/super-update",
+      "methods": [
+        "PATCH"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "Files",
+          "jsonName": "files",
+          "goType": "[]library_explorer.SuperUpdateFileOptions",
+          "usedStructType": "library_explorer.SuperUpdateFileOptions",
+          "typescriptType": "Array\u003cLibraryExplorer_SuperUpdateFileOptions\u003e",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
     }
   },
   {
@@ -5006,6 +6024,33 @@
     }
   },
   {
+    "name": "HandleGetLocalMangaPage",
+    "trimmedName": "GetLocalMangaPage",
+    "comments": [
+      "HandleGetLocalMangaPage",
+      "",
+      "\t@summary returns a local manga page.",
+      "\t@route /api/v1/manga/local-page/{path} [GET]",
+      "\t@returns manga.PageContainer",
+      ""
+    ],
+    "filepath": "internal/handlers/manga.go",
+    "filename": "manga.go",
+    "api": {
+      "summary": "returns a local manga page.",
+      "descriptions": [],
+      "endpoint": "/api/v1/manga/local-page/{path}",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "manga.PageContainer",
+      "returnGoType": "manga.PageContainer",
+      "returnTypescriptType": "Manga_PageContainer"
+    }
+  },
+  {
     "name": "HandleDownloadMangaChapters",
     "trimmedName": "DownloadMangaChapters",
     "comments": [
@@ -5376,8 +6421,8 @@
       ],
       "params": [],
       "bodyFields": [],
-      "returns": "boolean",
-      "returnGoType": "boolean",
+      "returns": "bool",
+      "returnGoType": "bool",
       "returnTypescriptType": "boolean"
     }
   },
@@ -5638,86 +6683,6 @@
     }
   },
   {
-    "name": "HandlePopulateTVDBEpisodes",
-    "trimmedName": "PopulateTVDBEpisodes",
-    "comments": [
-      "HandlePopulateTVDBEpisodes",
-      "",
-      "\t@summary populate cache with TVDB episode metadata.",
-      "\t@desc This will populate the cache with TVDB episode metadata for the given media.",
-      "\t@returns []tvdb.Episode",
-      "\t@route /api/v1/metadata-provider/tvdb-episodes [POST]",
-      ""
-    ],
-    "filepath": "internal/handlers/metadata.go",
-    "filename": "metadata.go",
-    "api": {
-      "summary": "populate cache with TVDB episode metadata.",
-      "descriptions": [
-        "This will populate the cache with TVDB episode metadata for the given media."
-      ],
-      "endpoint": "/api/v1/metadata-provider/tvdb-episodes",
-      "methods": [
-        "POST"
-      ],
-      "params": [],
-      "bodyFields": [
-        {
-          "name": "MediaId",
-          "jsonName": "mediaId",
-          "goType": "int",
-          "usedStructType": "",
-          "typescriptType": "number",
-          "required": true,
-          "descriptions": []
-        }
-      ],
-      "returns": "[]tvdb.Episode",
-      "returnGoType": "tvdb.Episode",
-      "returnTypescriptType": "Array\u003cTVDB_Episode\u003e"
-    }
-  },
-  {
-    "name": "HandleEmptyTVDBEpisodes",
-    "trimmedName": "EmptyTVDBEpisodes",
-    "comments": [
-      "HandleEmptyTVDBEpisodes",
-      "",
-      "\t@summary empties TVDB episode metadata cache.",
-      "\t@desc This will empty the TVDB episode metadata cache for the given media.",
-      "\t@returns bool",
-      "\t@route /api/v1/metadata-provider/tvdb-episodes [DELETE]",
-      ""
-    ],
-    "filepath": "internal/handlers/metadata.go",
-    "filename": "metadata.go",
-    "api": {
-      "summary": "empties TVDB episode metadata cache.",
-      "descriptions": [
-        "This will empty the TVDB episode metadata cache for the given media."
-      ],
-      "endpoint": "/api/v1/metadata-provider/tvdb-episodes",
-      "methods": [
-        "DELETE"
-      ],
-      "params": [],
-      "bodyFields": [
-        {
-          "name": "MediaId",
-          "jsonName": "mediaId",
-          "goType": "int",
-          "usedStructType": "",
-          "typescriptType": "number",
-          "required": true,
-          "descriptions": []
-        }
-      ],
-      "returns": "bool",
-      "returnGoType": "bool",
-      "returnTypescriptType": "boolean"
-    }
-  },
-  {
     "name": "HandlePopulateFillerData",
     "trimmedName": "PopulateFillerData",
     "comments": [
@@ -5792,6 +6757,576 @@
           "descriptions": []
         }
       ],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleNakamaWebSocket",
+    "trimmedName": "NakamaWebSocket",
+    "comments": [
+      "HandleNakamaWebSocket handles WebSocket connections for Nakama peers",
+      "",
+      "\t@summary handles WebSocket connections for Nakama peers.",
+      "\t@desc This endpoint handles WebSocket connections from Nakama peers when this instance is acting as a host.",
+      "\t@route /api/v1/nakama/ws [GET]",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "handles WebSocket connections for Nakama peers.",
+      "descriptions": [
+        "This endpoint handles WebSocket connections from Nakama peers when this instance is acting as a host."
+      ],
+      "endpoint": "/api/v1/nakama/ws",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleSendNakamaMessage",
+    "trimmedName": "SendNakamaMessage",
+    "comments": [
+      "HandleSendNakamaMessage",
+      "",
+      "\t@summary sends a custom message through Nakama.",
+      "\t@desc This allows sending custom messages to connected peers or the host.",
+      "\t@route /api/v1/nakama/message [POST]",
+      "\t@returns nakama.MessageResponse",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "sends a custom message through Nakama.",
+      "descriptions": [
+        "This allows sending custom messages to connected peers or the host."
+      ],
+      "endpoint": "/api/v1/nakama/message",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "MessageType",
+          "jsonName": "messageType",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "Payload",
+          "jsonName": "payload",
+          "goType": "",
+          "usedStructType": "",
+          "typescriptType": "any",
+          "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "PeerID",
+          "jsonName": "peerId",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": false,
+          "descriptions": []
+        }
+      ],
+      "returns": "nakama.MessageResponse",
+      "returnGoType": "nakama.MessageResponse",
+      "returnTypescriptType": "Nakama_MessageResponse"
+    }
+  },
+  {
+    "name": "HandleGetNakamaAnimeLibrary",
+    "trimmedName": "GetNakamaAnimeLibrary",
+    "comments": [
+      "HandleGetNakamaAnimeLibrary",
+      "",
+      "\t@summary shares the local anime collection with Nakama clients.",
+      "\t@desc This creates a new LibraryCollection struct and returns it.",
+      "\t@desc This is used to share the local anime collection with Nakama clients.",
+      "\t@route /api/v1/nakama/host/anime/library/collection [GET]",
+      "\t@returns nakama.NakamaAnimeLibrary",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "shares the local anime collection with Nakama clients.",
+      "descriptions": [
+        "This creates a new LibraryCollection struct and returns it.",
+        "This is used to share the local anime collection with Nakama clients."
+      ],
+      "endpoint": "/api/v1/nakama/host/anime/library/collection",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "nakama.NakamaAnimeLibrary",
+      "returnGoType": "nakama.NakamaAnimeLibrary",
+      "returnTypescriptType": "Nakama_NakamaAnimeLibrary"
+    }
+  },
+  {
+    "name": "HandleGetNakamaAnimeLibraryCollection",
+    "trimmedName": "GetNakamaAnimeLibraryCollection",
+    "comments": [
+      "HandleGetNakamaAnimeLibraryCollection",
+      "",
+      "\t@summary shares the local anime collection with Nakama clients.",
+      "\t@desc This creates a new LibraryCollection struct and returns it.",
+      "\t@desc This is used to share the local anime collection with Nakama clients.",
+      "\t@route /api/v1/nakama/host/anime/library/collection [GET]",
+      "\t@returns anime.LibraryCollection",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "shares the local anime collection with Nakama clients.",
+      "descriptions": [
+        "This creates a new LibraryCollection struct and returns it.",
+        "This is used to share the local anime collection with Nakama clients."
+      ],
+      "endpoint": "/api/v1/nakama/host/anime/library/collection",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "anime.LibraryCollection",
+      "returnGoType": "anime.LibraryCollection",
+      "returnTypescriptType": "Anime_LibraryCollection"
+    }
+  },
+  {
+    "name": "HandleGetNakamaAnimeLibraryFiles",
+    "trimmedName": "GetNakamaAnimeLibraryFiles",
+    "comments": [
+      "HandleGetNakamaAnimeLibraryFiles",
+      "",
+      "\t@summary return the local files for the given AniList anime media id.",
+      "\t@desc This is used by the anime media entry pages to get all the data about the anime.",
+      "\t@route /api/v1/nakama/host/anime/library/files/{id} [POST]",
+      "\t@param id - int - true - \"AniList anime media ID\"",
+      "\t@returns []anime.LocalFile",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "return the local files for the given AniList anime media id.",
+      "descriptions": [
+        "This is used by the anime media entry pages to get all the data about the anime."
+      ],
+      "endpoint": "/api/v1/nakama/host/anime/library/files/{id}",
+      "methods": [
+        "POST"
+      ],
+      "params": [
+        {
+          "name": "id",
+          "jsonName": "id",
+          "goType": "int",
+          "usedStructType": "",
+          "typescriptType": "number",
+          "required": true,
+          "descriptions": [
+            "AniList anime media ID"
+          ]
+        }
+      ],
+      "bodyFields": [],
+      "returns": "[]anime.LocalFile",
+      "returnGoType": "anime.LocalFile",
+      "returnTypescriptType": "Array\u003cAnime_LocalFile\u003e"
+    }
+  },
+  {
+    "name": "HandleGetNakamaAnimeAllLibraryFiles",
+    "trimmedName": "GetNakamaAnimeAllLibraryFiles",
+    "comments": [
+      "HandleGetNakamaAnimeAllLibraryFiles",
+      "",
+      "\t@summary return all the local files for the host.",
+      "\t@desc This is used to share the local anime collection with Nakama clients.",
+      "\t@route /api/v1/nakama/host/anime/library/files [POST]",
+      "\t@returns []anime.LocalFile",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "return all the local files for the host.",
+      "descriptions": [
+        "This is used to share the local anime collection with Nakama clients."
+      ],
+      "endpoint": "/api/v1/nakama/host/anime/library/files",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "[]anime.LocalFile",
+      "returnGoType": "anime.LocalFile",
+      "returnTypescriptType": "Array\u003cAnime_LocalFile\u003e"
+    }
+  },
+  {
+    "name": "HandleNakamaPlayVideo",
+    "trimmedName": "NakamaPlayVideo",
+    "comments": [
+      "HandleNakamaPlayVideo",
+      "",
+      "\t@summary plays the media from the host.",
+      "\t@route /api/v1/nakama/play [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "plays the media from the host.",
+      "descriptions": [],
+      "endpoint": "/api/v1/nakama/play",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "Path",
+          "jsonName": "path",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "MediaId",
+          "jsonName": "mediaId",
+          "goType": "int",
+          "usedStructType": "",
+          "typescriptType": "number",
+          "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "AniDBEpisode",
+          "jsonName": "anidbEpisode",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "ClientId",
+          "jsonName": "clientId",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleNakamaHostTorrentstreamServeStream",
+    "trimmedName": "NakamaHostTorrentstreamServeStream",
+    "comments": [
+      "Note: This is not used anymore. Each peer will independently stream the torrent.",
+      "route /api/v1/nakama/host/torrentstream/stream",
+      "Allows peers to stream the currently playing torrent.",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "",
+      "descriptions": [],
+      "endpoint": "",
+      "methods": null,
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleNakamaHostDebridstreamServeStream",
+    "trimmedName": "NakamaHostDebridstreamServeStream",
+    "comments": [
+      "route /api/v1/nakama/host/debridstream/stream",
+      "Allows peers to stream the currently playing torrent.",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "",
+      "descriptions": [],
+      "endpoint": "",
+      "methods": null,
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleNakamaHostGetDebridstreamURL",
+    "trimmedName": "NakamaHostGetDebridstreamURL",
+    "comments": [
+      "route /api/v1/nakama/host/debridstream/url",
+      "Returns the debrid stream URL for direct access by peers to avoid host bandwidth usage",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "",
+      "descriptions": [],
+      "endpoint": "",
+      "methods": null,
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleNakamaHostAnimeLibraryServeStream",
+    "trimmedName": "NakamaHostAnimeLibraryServeStream",
+    "comments": [
+      "route /api/v1/nakama/host/anime/library/stream?path={base64_encoded_path}",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "",
+      "descriptions": [],
+      "endpoint": "",
+      "methods": null,
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleNakamaProxyStream",
+    "trimmedName": "NakamaProxyStream",
+    "comments": [
+      "route /api/v1/nakama/stream",
+      "Proxies stream requests to the host. It inserts the Nakama password in the headers.",
+      "It checks if the password is valid.",
+      "For debrid streams, it redirects directly to the debrid service to avoid host bandwidth usage.",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "",
+      "descriptions": [],
+      "endpoint": "",
+      "methods": null,
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleNakamaReconnectToHost",
+    "trimmedName": "NakamaReconnectToHost",
+    "comments": [
+      "HandleNakamaReconnectToHost",
+      "",
+      "\t@summary reconnects to the Nakama host.",
+      "\t@desc This attempts to reconnect to the configured Nakama host if the connection was lost.",
+      "\t@route /api/v1/nakama/reconnect [POST]",
+      "\t@returns nakama.MessageResponse",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "reconnects to the Nakama host.",
+      "descriptions": [
+        "This attempts to reconnect to the configured Nakama host if the connection was lost."
+      ],
+      "endpoint": "/api/v1/nakama/reconnect",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "nakama.MessageResponse",
+      "returnGoType": "nakama.MessageResponse",
+      "returnTypescriptType": "Nakama_MessageResponse"
+    }
+  },
+  {
+    "name": "HandleNakamaRemoveStaleConnections",
+    "trimmedName": "NakamaRemoveStaleConnections",
+    "comments": [
+      "HandleNakamaRemoveStaleConnections",
+      "",
+      "\t@summary removes stale peer connections.",
+      "\t@desc This removes peer connections that haven't responded to ping messages for a while.",
+      "\t@route /api/v1/nakama/cleanup [POST]",
+      "\t@returns nakama.MessageResponse",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "removes stale peer connections.",
+      "descriptions": [
+        "This removes peer connections that haven't responded to ping messages for a while."
+      ],
+      "endpoint": "/api/v1/nakama/cleanup",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "nakama.MessageResponse",
+      "returnGoType": "nakama.MessageResponse",
+      "returnTypescriptType": "Nakama_MessageResponse"
+    }
+  },
+  {
+    "name": "HandleNakamaCreateWatchParty",
+    "trimmedName": "NakamaCreateWatchParty",
+    "comments": [
+      "HandleNakamaCreateWatchParty",
+      "",
+      "\t@summary creates a new watch party session.",
+      "\t@desc This creates a new watch party that peers can join to watch content together in sync.",
+      "\t@route /api/v1/nakama/watch-party/create [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "creates a new watch party session.",
+      "descriptions": [
+        "This creates a new watch party that peers can join to watch content together in sync."
+      ],
+      "endpoint": "/api/v1/nakama/watch-party/create",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "Settings",
+          "jsonName": "settings",
+          "goType": "nakama.WatchPartySessionSettings",
+          "usedStructType": "nakama.WatchPartySessionSettings",
+          "typescriptType": "Nakama_WatchPartySessionSettings",
+          "required": false,
+          "descriptions": []
+        }
+      ],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleNakamaJoinWatchParty",
+    "trimmedName": "NakamaJoinWatchParty",
+    "comments": [
+      "HandleNakamaJoinWatchParty",
+      "",
+      "\t@summary joins an existing watch party.",
+      "\t@desc This allows a peer to join an active watch party session.",
+      "\t@route /api/v1/nakama/watch-party/join [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "joins an existing watch party.",
+      "descriptions": [
+        "This allows a peer to join an active watch party session."
+      ],
+      "endpoint": "/api/v1/nakama/watch-party/join",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "ClientId",
+          "jsonName": "clientId",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleNakamaLeaveWatchParty",
+    "trimmedName": "NakamaLeaveWatchParty",
+    "comments": [
+      "HandleNakamaLeaveWatchParty",
+      "",
+      "\t@summary leaves the current watch party.",
+      "\t@desc This removes the user from the active watch party session.",
+      "\t@route /api/v1/nakama/watch-party/leave [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/nakama.go",
+    "filename": "nakama.go",
+    "api": {
+      "summary": "leaves the current watch party.",
+      "descriptions": [
+        "This removes the user from the active watch party session."
+      ],
+      "endpoint": "/api/v1/nakama/watch-party/leave",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [],
       "returns": "bool",
       "returnGoType": "bool",
       "returnTypescriptType": "boolean"
@@ -6406,17 +7941,7 @@
         "POST"
       ],
       "params": [],
-      "bodyFields": [
-        {
-          "name": "DbId",
-          "jsonName": "dbId",
-          "goType": "uint",
-          "usedStructType": "",
-          "typescriptType": "number",
-          "required": true,
-          "descriptions": []
-        }
-      ],
+      "bodyFields": [],
       "returns": "bool",
       "returnGoType": "bool",
       "returnTypescriptType": "boolean"
@@ -6581,7 +8106,7 @@
       "HandleCreatePlaylist",
       "",
       "\t@summary creates a new playlist.",
-      "\t@desc This will create a new playlist with the given name and local file paths.",
+      "\t@desc This will create a new playlist with the given name and episodes.",
       "\t@desc The response is ignored, the client should re-fetch the playlists after this.",
       "\t@route /api/v1/playlist [POST]",
       "\t@returns anime.Playlist",
@@ -6592,7 +8117,7 @@
     "api": {
       "summary": "creates a new playlist.",
       "descriptions": [
-        "This will create a new playlist with the given name and local file paths.",
+        "This will create a new playlist with the given name and episodes.",
         "The response is ignored, the client should re-fetch the playlists after this."
       ],
       "endpoint": "/api/v1/playlist",
@@ -6611,11 +8136,11 @@
           "descriptions": []
         },
         {
-          "name": "Paths",
-          "jsonName": "paths",
-          "goType": "[]string",
-          "usedStructType": "",
-          "typescriptType": "Array\u003cstring\u003e",
+          "name": "Episodes",
+          "jsonName": "episodes",
+          "goType": "[]anime.PlaylistEpisode",
+          "usedStructType": "anime.PlaylistEpisode",
+          "typescriptType": "Array\u003cAnime_PlaylistEpisode\u003e",
           "required": true,
           "descriptions": []
         }
@@ -6710,11 +8235,11 @@
           "descriptions": []
         },
         {
-          "name": "Paths",
-          "jsonName": "paths",
-          "goType": "[]string",
-          "usedStructType": "",
-          "typescriptType": "Array\u003cstring\u003e",
+          "name": "Episodes",
+          "jsonName": "episodes",
+          "goType": "[]anime.PlaylistEpisode",
+          "usedStructType": "anime.PlaylistEpisode",
+          "typescriptType": "Array\u003cAnime_PlaylistEpisode\u003e",
           "required": true,
           "descriptions": []
         }
@@ -6768,10 +8293,10 @@
       "HandleGetPlaylistEpisodes",
       "",
       "\t@summary returns all the local files of a playlist media entry that have not been watched.",
-      "\t@route /api/v1/playlist/episodes/{id}/{progress} [GET]",
+      "\t@route /api/v1/playlist/episodes/{id} [GET]",
       "\t@param id - int - true - \"The ID of the media entry.\"",
       "\t@param progress - int - true - \"The progress of the media entry.\"",
-      "\t@returns []anime.LocalFile",
+      "\t@returns []anime.PlaylistEpisode",
       ""
     ],
     "filepath": "internal/handlers/playlist.go",
@@ -6779,7 +8304,7 @@
     "api": {
       "summary": "returns all the local files of a playlist media entry that have not been watched.",
       "descriptions": [],
-      "endpoint": "/api/v1/playlist/episodes/{id}/{progress}",
+      "endpoint": "/api/v1/playlist/episodes/{id}",
       "methods": [
         "GET"
       ],
@@ -6808,9 +8333,30 @@
         }
       ],
       "bodyFields": [],
-      "returns": "[]anime.LocalFile",
-      "returnGoType": "anime.LocalFile",
-      "returnTypescriptType": "Array\u003cAnime_LocalFile\u003e"
+      "returns": "[]anime.PlaylistEpisode",
+      "returnGoType": "anime.PlaylistEpisode",
+      "returnTypescriptType": "Array\u003cAnime_PlaylistEpisode\u003e"
+    }
+  },
+  {
+    "name": "rewriteURI",
+    "trimmedName": "rewriteURI",
+    "comments": [
+      "rewriteURI rewrites a URI pointer if needed, returns true if modified",
+      ""
+    ],
+    "filepath": "internal/handlers/proxy.go",
+    "filename": "proxy.go",
+    "api": {
+      "summary": "",
+      "descriptions": [],
+      "endpoint": "",
+      "methods": null,
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
     }
   },
   {
@@ -6822,7 +8368,7 @@
       "\t@summary installs the latest update.",
       "\t@desc This will install the latest update and launch the new version.",
       "\t@route /api/v1/install-update [POST]",
-      "\t@returns handler.Status",
+      "\t@returns handlers.Status",
       ""
     ],
     "filepath": "internal/handlers/releases.go",
@@ -6848,8 +8394,8 @@
           "descriptions": []
         }
       ],
-      "returns": "handler.Status",
-      "returnGoType": "handler.Status",
+      "returns": "handlers.Status",
+      "returnGoType": "handlers.Status",
       "returnTypescriptType": "Status"
     }
   },
@@ -7218,6 +8764,15 @@
           "descriptions": []
         },
         {
+          "name": "Nakama",
+          "jsonName": "nakama",
+          "goType": "models.NakamaSettings",
+          "usedStructType": "models.NakamaSettings",
+          "typescriptType": "Models_NakamaSettings",
+          "required": true,
+          "descriptions": []
+        },
+        {
           "name": "EnableTranscode",
           "jsonName": "enableTranscode",
           "goType": "bool",
@@ -7348,6 +8903,15 @@
           "typescriptType": "Models_NotificationSettings",
           "required": true,
           "descriptions": []
+        },
+        {
+          "name": "Nakama",
+          "jsonName": "nakama",
+          "goType": "models.NakamaSettings",
+          "usedStructType": "models.NakamaSettings",
+          "typescriptType": "Models_NakamaSettings",
+          "required": true,
+          "descriptions": []
         }
       ],
       "returns": "handlers.Status",
@@ -7454,8 +9018,8 @@
       "methods": null,
       "params": [],
       "bodyFields": [],
-      "returns": "boolean",
-      "returnGoType": "boolean",
+      "returns": "bool",
+      "returnGoType": "bool",
       "returnTypescriptType": "boolean"
     }
   },
@@ -7596,106 +9160,33 @@
     }
   },
   {
-    "name": "HandleSyncGetTrackedMediaItems",
-    "trimmedName": "SyncGetTrackedMediaItems",
+    "name": "HandleGetAnnouncements",
+    "trimmedName": "GetAnnouncements",
     "comments": [
-      "HandleSyncGetTrackedMediaItems",
+      "HandleGetAnnouncements",
       "",
-      "\t@summary gets all tracked media.",
-      "\t@route /api/v1/sync/track [GET]",
-      "\t@returns []sync.TrackedMediaItem",
+      "\t@summary returns the server announcements.",
+      "\t@desc This returns the announcements for the server.",
+      "\t@route /api/v1/announcements [POST]",
+      "\t@returns []updater.Announcement",
       ""
     ],
-    "filepath": "internal/handlers/sync.go",
-    "filename": "sync.go",
+    "filepath": "internal/handlers/status.go",
+    "filename": "status.go",
     "api": {
-      "summary": "gets all tracked media.",
-      "descriptions": [],
-      "endpoint": "/api/v1/sync/track",
-      "methods": [
-        "GET"
+      "summary": "returns the server announcements.",
+      "descriptions": [
+        "This returns the announcements for the server."
       ],
-      "params": [],
-      "bodyFields": [],
-      "returns": "[]sync.TrackedMediaItem",
-      "returnGoType": "sync.TrackedMediaItem",
-      "returnTypescriptType": "Array\u003cSync_TrackedMediaItem\u003e"
-    }
-  },
-  {
-    "name": "HandleSyncAddMedia",
-    "trimmedName": "SyncAddMedia",
-    "comments": [
-      "HandleSyncAddMedia",
-      "",
-      "\t@summary adds one or multiple media to be tracked for offline sync.",
-      "\t@route /api/v1/sync/track [POST]",
-      "\t@returns bool",
-      ""
-    ],
-    "filepath": "internal/handlers/sync.go",
-    "filename": "sync.go",
-    "api": {
-      "summary": "adds one or multiple media to be tracked for offline sync.",
-      "descriptions": [],
-      "endpoint": "/api/v1/sync/track",
+      "endpoint": "/api/v1/announcements",
       "methods": [
         "POST"
       ],
       "params": [],
       "bodyFields": [
         {
-          "name": "Media",
-          "jsonName": "media",
-          "goType": "[]__STRUCT__",
-          "usedStructType": "",
-          "typescriptType": "Array\u003c{ mediaId: number; type: string; }\u003e",
-          "required": true,
-          "descriptions": []
-        }
-      ],
-      "returns": "bool",
-      "returnGoType": "bool",
-      "returnTypescriptType": "boolean"
-    }
-  },
-  {
-    "name": "HandleSyncRemoveMedia",
-    "trimmedName": "SyncRemoveMedia",
-    "comments": [
-      "HandleSyncRemoveMedia",
-      "",
-      "\t@summary remove media from being tracked for offline sync.",
-      "\t@desc This will remove anime from being tracked for offline sync and delete any associated data.",
-      "\t@route /api/v1/sync/track [DELETE]",
-      "\t@returns bool",
-      ""
-    ],
-    "filepath": "internal/handlers/sync.go",
-    "filename": "sync.go",
-    "api": {
-      "summary": "remove media from being tracked for offline sync.",
-      "descriptions": [
-        "This will remove anime from being tracked for offline sync and delete any associated data."
-      ],
-      "endpoint": "/api/v1/sync/track",
-      "methods": [
-        "DELETE"
-      ],
-      "params": [],
-      "bodyFields": [
-        {
-          "name": "MediaId",
-          "jsonName": "mediaId",
-          "goType": "int",
-          "usedStructType": "",
-          "typescriptType": "number",
-          "required": true,
-          "descriptions": []
-        },
-        {
-          "name": "Type",
-          "jsonName": "type",
+          "name": "Platform",
+          "jsonName": "platform",
           "goType": "string",
           "usedStructType": "",
           "typescriptType": "string",
@@ -7703,236 +9194,227 @@
           "descriptions": []
         }
       ],
-      "returns": "bool",
-      "returnGoType": "bool",
-      "returnTypescriptType": "boolean"
+      "returns": "[]updater.Announcement",
+      "returnGoType": "updater.Announcement",
+      "returnTypescriptType": "Array\u003cUpdater_Announcement\u003e"
     }
   },
   {
-    "name": "HandleSyncGetIsMediaTracked",
-    "trimmedName": "SyncGetIsMediaTracked",
+    "name": "HandleGetMemoryStats",
+    "trimmedName": "GetMemoryStats",
     "comments": [
-      "HandleSyncGetIsMediaTracked",
+      "HandleGetMemoryStats",
       "",
-      "\t@summary checks if media is being tracked for offline sync.",
-      "\t@route /api/v1/sync/track/{id}/{type} [GET]",
-      "\t@param id - int - true - \"AniList anime media ID\"",
-      "\t@param type - string - true - \"Type of media (anime/manga)\"",
-      "\t@returns bool",
+      "\t@summary returns current memory statistics.",
+      "\t@desc This returns real-time memory usage statistics from the Go runtime.",
+      "\t@route /api/v1/memory/stats [GET]",
+      "\t@returns handlers.MemoryStatsResponse",
       ""
     ],
-    "filepath": "internal/handlers/sync.go",
-    "filename": "sync.go",
+    "filepath": "internal/handlers/status.go",
+    "filename": "status.go",
     "api": {
-      "summary": "checks if media is being tracked for offline sync.",
-      "descriptions": [],
-      "endpoint": "/api/v1/sync/track/{id}/{type}",
-      "methods": [
-        "GET"
-      ],
-      "params": [
-        {
-          "name": "id",
-          "jsonName": "id",
-          "goType": "int",
-          "usedStructType": "",
-          "typescriptType": "number",
-          "required": true,
-          "descriptions": [
-            "AniList anime media ID"
-          ]
-        },
-        {
-          "name": "type",
-          "jsonName": "type",
-          "goType": "string",
-          "usedStructType": "",
-          "typescriptType": "string",
-          "required": true,
-          "descriptions": [
-            "Type of media (anime/manga)"
-          ]
-        }
-      ],
-      "bodyFields": [],
-      "returns": "bool",
-      "returnGoType": "bool",
-      "returnTypescriptType": "boolean"
-    }
-  },
-  {
-    "name": "HandleSyncLocalData",
-    "trimmedName": "SyncLocalData",
-    "comments": [
-      "HandleSyncLocalData",
-      "",
-      "\t@summary syncs local data with AniList.",
-      "\t@route /api/v1/sync/local [POST]",
-      "\t@returns bool",
-      ""
-    ],
-    "filepath": "internal/handlers/sync.go",
-    "filename": "sync.go",
-    "api": {
-      "summary": "syncs local data with AniList.",
-      "descriptions": [],
-      "endpoint": "/api/v1/sync/local",
-      "methods": [
-        "POST"
-      ],
-      "params": [],
-      "bodyFields": [],
-      "returns": "bool",
-      "returnGoType": "bool",
-      "returnTypescriptType": "boolean"
-    }
-  },
-  {
-    "name": "HandleSyncGetQueueState",
-    "trimmedName": "SyncGetQueueState",
-    "comments": [
-      "HandleSyncGetQueueState",
-      "",
-      "\t@summary gets the current sync queue state.",
-      "\t@desc This will return the list of media that are currently queued for syncing.",
-      "\t@route /api/v1/sync/queue [GET]",
-      "\t@returns sync.QueueState",
-      ""
-    ],
-    "filepath": "internal/handlers/sync.go",
-    "filename": "sync.go",
-    "api": {
-      "summary": "gets the current sync queue state.",
+      "summary": "returns current memory statistics.",
       "descriptions": [
-        "This will return the list of media that are currently queued for syncing."
+        "This returns real-time memory usage statistics from the Go runtime."
       ],
-      "endpoint": "/api/v1/sync/queue",
+      "endpoint": "/api/v1/memory/stats",
       "methods": [
         "GET"
       ],
       "params": [],
       "bodyFields": [],
-      "returns": "sync.QueueState",
-      "returnGoType": "sync.QueueState",
-      "returnTypescriptType": "Sync_QueueState"
+      "returns": "handlers.MemoryStatsResponse",
+      "returnGoType": "handlers.MemoryStatsResponse",
+      "returnTypescriptType": "MemoryStatsResponse"
     }
   },
   {
-    "name": "HandleSyncAnilistData",
-    "trimmedName": "SyncAnilistData",
+    "name": "HandleGetMemoryProfile",
+    "trimmedName": "GetMemoryProfile",
     "comments": [
-      "HandleSyncAnilistData",
+      "HandleGetMemoryProfile",
       "",
-      "\t@summary syncs AniList data with local.",
-      "\t@route /api/v1/sync/anilist [POST]",
-      "\t@returns bool",
+      "\t@summary generates and returns a memory profile.",
+      "\t@desc This generates a memory profile that can be analyzed with go tool pprof.",
+      "\t@desc Query parameters: heap=true for heap profile, allocs=true for alloc profile.",
+      "\t@route /api/v1/memory/profile [GET]",
+      "\t@returns nil",
       ""
     ],
-    "filepath": "internal/handlers/sync.go",
-    "filename": "sync.go",
+    "filepath": "internal/handlers/status.go",
+    "filename": "status.go",
     "api": {
-      "summary": "syncs AniList data with local.",
-      "descriptions": [],
-      "endpoint": "/api/v1/sync/anilist",
+      "summary": "generates and returns a memory profile.",
+      "descriptions": [
+        "This generates a memory profile that can be analyzed with go tool pprof.",
+        "Query parameters: heap=true for heap profile, allocs=true for alloc profile."
+      ],
+      "endpoint": "/api/v1/memory/profile",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "nil",
+      "returnGoType": "nil",
+      "returnTypescriptType": "null"
+    }
+  },
+  {
+    "name": "HandleGetGoRoutineProfile",
+    "trimmedName": "GetGoRoutineProfile",
+    "comments": [
+      "HandleGetGoRoutineProfile",
+      "",
+      "\t@summary generates and returns a goroutine profile.",
+      "\t@desc This generates a goroutine profile showing all running goroutines and their stack traces.",
+      "\t@route /api/v1/memory/goroutine [GET]",
+      "\t@returns nil",
+      ""
+    ],
+    "filepath": "internal/handlers/status.go",
+    "filename": "status.go",
+    "api": {
+      "summary": "generates and returns a goroutine profile.",
+      "descriptions": [
+        "This generates a goroutine profile showing all running goroutines and their stack traces."
+      ],
+      "endpoint": "/api/v1/memory/goroutine",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "nil",
+      "returnGoType": "nil",
+      "returnTypescriptType": "null"
+    }
+  },
+  {
+    "name": "HandleGetCPUProfile",
+    "trimmedName": "GetCPUProfile",
+    "comments": [
+      "HandleGetCPUProfile",
+      "",
+      "\t@summary generates and returns a CPU profile.",
+      "\t@desc This generates a CPU profile for the specified duration (default 30 seconds).",
+      "\t@desc Query parameter: duration=30 for duration in seconds.",
+      "\t@route /api/v1/memory/cpu [GET]",
+      "\t@returns nil",
+      ""
+    ],
+    "filepath": "internal/handlers/status.go",
+    "filename": "status.go",
+    "api": {
+      "summary": "generates and returns a CPU profile.",
+      "descriptions": [
+        "This generates a CPU profile for the specified duration (default 30 seconds).",
+        "Query parameter: duration=30 for duration in seconds."
+      ],
+      "endpoint": "/api/v1/memory/cpu",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "nil",
+      "returnGoType": "nil",
+      "returnTypescriptType": "null"
+    }
+  },
+  {
+    "name": "HandleForceGC",
+    "trimmedName": "ForceGC",
+    "comments": [
+      "HandleForceGC",
+      "",
+      "\t@summary forces garbage collection and returns memory stats.",
+      "\t@desc This forces a garbage collection cycle and returns the updated memory statistics.",
+      "\t@route /api/v1/memory/gc [POST]",
+      "\t@returns handlers.MemoryStatsResponse",
+      ""
+    ],
+    "filepath": "internal/handlers/status.go",
+    "filename": "status.go",
+    "api": {
+      "summary": "forces garbage collection and returns memory stats.",
+      "descriptions": [
+        "This forces a garbage collection cycle and returns the updated memory statistics."
+      ],
+      "endpoint": "/api/v1/memory/gc",
       "methods": [
         "POST"
       ],
       "params": [],
       "bodyFields": [],
-      "returns": "bool",
-      "returnGoType": "bool",
-      "returnTypescriptType": "boolean"
+      "returns": "handlers.MemoryStatsResponse",
+      "returnGoType": "handlers.MemoryStatsResponse",
+      "returnTypescriptType": "MemoryStatsResponse"
     }
   },
   {
-    "name": "HandleSyncSetHasLocalChanges",
-    "trimmedName": "SyncSetHasLocalChanges",
+    "name": "HandleGetHomeItems",
+    "trimmedName": "GetHomeItems",
     "comments": [
-      "HandleSyncSetHasLocalChanges",
+      "HandleGetHomeItems",
       "",
-      "\t@summary sets the flag to determine if there are local changes that need to be synced with AniList.",
-      "\t@route /api/v1/sync/updated [POST]",
-      "\t@returns bool",
+      "\t@summary returns the home items.",
+      "\t@route /api/v1/status/home-items [GET]",
+      "\t@returns []models.HomeItem",
       ""
     ],
-    "filepath": "internal/handlers/sync.go",
-    "filename": "sync.go",
+    "filepath": "internal/handlers/status.go",
+    "filename": "status.go",
     "api": {
-      "summary": "sets the flag to determine if there are local changes that need to be synced with AniList.",
+      "summary": "returns the home items.",
       "descriptions": [],
-      "endpoint": "/api/v1/sync/updated",
+      "endpoint": "/api/v1/status/home-items",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "[]models.HomeItem",
+      "returnGoType": "models.HomeItem",
+      "returnTypescriptType": "Array\u003cModels_HomeItem\u003e"
+    }
+  },
+  {
+    "name": "HandleUpdateHomeItems",
+    "trimmedName": "UpdateHomeItems",
+    "comments": [
+      "HandleUpdateHomeItems",
+      "",
+      "\t@summary updates the home items.",
+      "\t@route /api/v1/status/home-items [POST]",
+      "\t@returns nil",
+      ""
+    ],
+    "filepath": "internal/handlers/status.go",
+    "filename": "status.go",
+    "api": {
+      "summary": "updates the home items.",
+      "descriptions": [],
+      "endpoint": "/api/v1/status/home-items",
       "methods": [
         "POST"
       ],
       "params": [],
       "bodyFields": [
         {
-          "name": "Updated",
-          "jsonName": "updated",
-          "goType": "bool",
-          "usedStructType": "",
-          "typescriptType": "boolean",
+          "name": "Items",
+          "jsonName": "items",
+          "goType": "[]models.HomeItem",
+          "usedStructType": "models.HomeItem",
+          "typescriptType": "Array\u003cModels_HomeItem\u003e",
           "required": true,
           "descriptions": []
         }
       ],
-      "returns": "bool",
-      "returnGoType": "bool",
-      "returnTypescriptType": "boolean"
-    }
-  },
-  {
-    "name": "HandleSyncGetHasLocalChanges",
-    "trimmedName": "SyncGetHasLocalChanges",
-    "comments": [
-      "HandleSyncGetHasLocalChanges",
-      "",
-      "\t@summary gets the flag to determine if there are local changes that need to be synced with AniList.",
-      "\t@route /api/v1/sync/updated [GET]",
-      "\t@returns bool",
-      ""
-    ],
-    "filepath": "internal/handlers/sync.go",
-    "filename": "sync.go",
-    "api": {
-      "summary": "gets the flag to determine if there are local changes that need to be synced with AniList.",
-      "descriptions": [],
-      "endpoint": "/api/v1/sync/updated",
-      "methods": [
-        "GET"
-      ],
-      "params": [],
-      "bodyFields": [],
-      "returns": "bool",
-      "returnGoType": "bool",
-      "returnTypescriptType": "boolean"
-    }
-  },
-  {
-    "name": "HandleSyncGetLocalStorageSize",
-    "trimmedName": "SyncGetLocalStorageSize",
-    "comments": [
-      "HandleSyncGetLocalStorageSize",
-      "",
-      "\t@summary gets the size of the local storage in a human-readable format.",
-      "\t@route /api/v1/sync/storage/size [GET]",
-      "\t@returns string",
-      ""
-    ],
-    "filepath": "internal/handlers/sync.go",
-    "filename": "sync.go",
-    "api": {
-      "summary": "gets the size of the local storage in a human-readable format.",
-      "descriptions": [],
-      "endpoint": "/api/v1/sync/storage/size",
-      "methods": [
-        "GET"
-      ],
-      "params": [],
-      "bodyFields": [],
-      "returns": "string",
-      "returnGoType": "string",
-      "returnTypescriptType": "string"
+      "returns": "nil",
+      "returnGoType": "nil",
+      "returnTypescriptType": "null"
     }
   },
   {
@@ -8092,6 +9574,55 @@
     }
   },
   {
+    "name": "HandleTorrentClientGetFiles",
+    "trimmedName": "TorrentClientGetFiles",
+    "comments": [
+      "HandleTorrentClientGetFiles",
+      "",
+      "\t@summary gets the files of a torrent.",
+      "\t@desc This handler is used to get the files of a torrent.",
+      "\t@route /api/v1/torrent-client/get-files [POST]",
+      "\t@returns []string",
+      ""
+    ],
+    "filepath": "internal/handlers/torrent_client.go",
+    "filename": "torrent_client.go",
+    "api": {
+      "summary": "gets the files of a torrent.",
+      "descriptions": [
+        "This handler is used to get the files of a torrent."
+      ],
+      "endpoint": "/api/v1/torrent-client/get-files",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "Torrent",
+          "jsonName": "torrent",
+          "goType": "hibiketorrent.AnimeTorrent",
+          "usedStructType": "hibiketorrent.AnimeTorrent",
+          "typescriptType": "HibikeTorrent_AnimeTorrent",
+          "required": false,
+          "descriptions": []
+        },
+        {
+          "name": "Provider",
+          "jsonName": "provider",
+          "goType": "string",
+          "usedStructType": "",
+          "typescriptType": "string",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "[]string",
+      "returnGoType": "string",
+      "returnTypescriptType": "Array\u003cstring\u003e"
+    }
+  },
+  {
     "name": "HandleTorrentClientDownload",
     "trimmedName": "TorrentClientDownload",
     "comments": [
@@ -8140,9 +9671,20 @@
           "name": "SmartSelect",
           "jsonName": "smartSelect",
           "goType": "__STRUCT__",
+          "inlineStructType": "struct{\nEnabled bool `json:\"enabled\"`\nMissingEpisodeNumbers []int `json:\"missingEpisodeNumbers\"`}",
           "usedStructType": "",
           "typescriptType": "{ enabled: boolean; missingEpisodeNumbers: Array\u003cnumber\u003e; }",
           "required": true,
+          "descriptions": []
+        },
+        {
+          "name": "Deselect",
+          "jsonName": "deselect",
+          "goType": "__STRUCT__",
+          "inlineStructType": "struct{\nEnabled bool `json:\"enabled\"`\nIndices []int `json:\"indices\"`}",
+          "usedStructType": "",
+          "typescriptType": "{ enabled: boolean; indices: Array\u003cnumber\u003e; }",
+          "required": false,
           "descriptions": []
         },
         {
@@ -8338,49 +9880,6 @@
       "returns": "torrent.SearchData",
       "returnGoType": "torrent.SearchData",
       "returnTypescriptType": "Torrent_SearchData"
-    }
-  },
-  {
-    "name": "HandleGetTorrentstreamEpisodeCollection",
-    "trimmedName": "GetTorrentstreamEpisodeCollection",
-    "comments": [
-      "HandleGetTorrentstreamEpisodeCollection",
-      "",
-      "\t@summary get list of episodes",
-      "\t@desc This returns a list of episodes.",
-      "\t@returns torrentstream.EpisodeCollection",
-      "\t@param id - int - true - \"AniList anime media ID\"",
-      "\t@route /api/v1/torrentstream/episodes/{id} [GET]",
-      ""
-    ],
-    "filepath": "internal/handlers/torrentstream.go",
-    "filename": "torrentstream.go",
-    "api": {
-      "summary": "get list of episodes",
-      "descriptions": [
-        "This returns a list of episodes."
-      ],
-      "endpoint": "/api/v1/torrentstream/episodes/{id}",
-      "methods": [
-        "GET"
-      ],
-      "params": [
-        {
-          "name": "id",
-          "jsonName": "id",
-          "goType": "int",
-          "usedStructType": "",
-          "typescriptType": "number",
-          "required": true,
-          "descriptions": [
-            "AniList anime media ID"
-          ]
-        }
-      ],
-      "bodyFields": [],
-      "returns": "torrentstream.EpisodeCollection",
-      "returnGoType": "torrentstream.EpisodeCollection",
-      "returnTypescriptType": "Torrentstream_EpisodeCollection"
     }
   },
   {
@@ -8609,6 +10108,15 @@
           "typescriptType": "string",
           "required": true,
           "descriptions": []
+        },
+        {
+          "name": "BatchEpisodeFiles",
+          "jsonName": "batchEpisodeFiles",
+          "goType": "hibiketorrent.BatchEpisodeFiles",
+          "usedStructType": "hibiketorrent.BatchEpisodeFiles",
+          "typescriptType": "HibikeTorrent_BatchEpisodeFiles",
+          "required": false,
+          "descriptions": []
         }
       ],
       "returns": "bool",
@@ -8736,8 +10244,8 @@
       "methods": null,
       "params": [],
       "bodyFields": [],
-      "returns": "boolean",
-      "returnGoType": "boolean",
+      "returns": "bool",
+      "returnGoType": "bool",
       "returnTypescriptType": "boolean"
     }
   },
@@ -8757,8 +10265,8 @@
       "methods": null,
       "params": [],
       "bodyFields": [],
-      "returns": "boolean",
-      "returnGoType": "boolean",
+      "returns": "bool",
+      "returnGoType": "bool",
       "returnTypescriptType": "boolean"
     }
   }

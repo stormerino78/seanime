@@ -1372,6 +1372,8 @@ export type Anime_Entry = {
     localFiles?: Array<Anime_LocalFile>
     anidbId: number
     currentEpisodeCount: number
+    _isNakamaEntry: boolean
+    nakamaLibraryData?: Anime_NakamaEntryLibraryData
 }
 
 /**
@@ -1472,6 +1474,18 @@ export type Anime_Episode = {
      */
     metadataIssue?: string
     baseAnime?: AL_BaseAnime
+    _isNakamaEpisode: boolean
+}
+
+/**
+ * - Filepath: internal/library/anime/episode_collection.go
+ * - Filename: episode_collection.go
+ * - Package: anime
+ */
+export type Anime_EpisodeCollection = {
+    hasMappingError: boolean
+    episodes?: Array<Anime_Episode>
+    metadata?: Metadata_AnimeMetadata
 }
 
 /**
@@ -1487,6 +1501,10 @@ export type Anime_EpisodeMetadata = {
     summary?: string
     overview?: string
     isFiller?: boolean
+    /**
+     * Indicates if the episode has a real image
+     */
+    hasImage?: boolean
 }
 
 /**
@@ -1520,6 +1538,10 @@ export type Anime_LibraryCollectionEntry = {
      * Library data
      */
     libraryData?: Anime_EntryLibraryData
+    /**
+     * Library data from Nakama
+     */
+    nakamaLibraryData?: Anime_NakamaEntryLibraryData
     /**
      * AniList list data
      */
@@ -1618,23 +1640,58 @@ export type Anime_MissingEpisodes = {
 }
 
 /**
+ * - Filepath: internal/library/anime/entry_library_data.go
+ * - Filename: entry_library_data.go
+ * - Package: anime
+ */
+export type Anime_NakamaEntryLibraryData = {
+    unwatchedCount: number
+    mainFileCount: number
+}
+
+/**
  * - Filepath: internal/library/anime/playlist.go
  * - Filename: playlist.go
  * - Package: anime
  */
 export type Anime_Playlist = {
     /**
-     * DbId is the database ID of the models.PlaylistEntry
+     * DbId is the database ID of the models.Playlist
      */
     dbId: number
     /**
      * Name is the name of the playlist
      */
     name: string
-    /**
-     * LocalFiles is a list of local files in the playlist, in order
-     */
-    localFiles?: Array<Anime_LocalFile>
+    episodes?: Array<Anime_PlaylistEpisode>
+}
+
+/**
+ * - Filepath: internal/library/anime/playlist.go
+ * - Filename: playlist.go
+ * - Package: anime
+ */
+export type Anime_PlaylistEpisode = {
+    episode?: Anime_Episode
+    isCompleted: boolean
+    watchType: Anime_WatchType
+    isNakama: boolean
+}
+
+/**
+ * - Filepath: internal/library/anime/schedule.go
+ * - Filename: schedule.go
+ * - Package: anime
+ */
+export type Anime_ScheduleItem = {
+    mediaId: number
+    title: string
+    time: string
+    dateTime?: string
+    image: string
+    episodeNumber: number
+    isMovie: boolean
+    isSeasonFinale: boolean
 }
 
 /**
@@ -1670,14 +1727,11 @@ export type Anime_UnmatchedGroup = {
 }
 
 /**
- * - Filepath: internal/library/anime/user.go
- * - Filename: user.go
+ * - Filepath: internal/library/anime/playlist.go
+ * - Filename: playlist.go
  * - Package: anime
  */
-export type Anime_User = {
-    viewer?: AL_GetViewer_Viewer
-    token: string
-}
+export type Anime_WatchType = "localfile" | "debrid" | "torrent" | "nakama" | "online"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ChapterDownloader
@@ -1928,7 +1982,7 @@ export type DebridClient_FilePreview = {
  * - Filename: stream.go
  * - Package: debrid_client
  */
-export type DebridClient_StreamPlaybackType = "default" | "externalPlayerLink"
+export type DebridClient_StreamPlaybackType = "none" | "noneAndAwait" | "default" | "nativeplayer" | "externalPlayerLink"
 
 /**
  * - Filepath: internal/debrid/client/stream.go
@@ -2049,6 +2103,7 @@ export type Extension_Extension = {
     author: string
     icon: string
     website: string
+    notes?: string
     lang: string
     /**
      * NOT IMPLEMENTED
@@ -2151,7 +2206,7 @@ export type Extension_SavedUserConfig = {
  * - Filename: extension.go
  * - Package: extension
  */
-export type Extension_Type = "anime-torrent-provider" | "manga-provider" | "onlinestream-provider" | "plugin"
+export type Extension_Type = "anime-torrent-provider" | "manga-provider" | "onlinestream-provider" | "custom-source" | "plugin"
 
 /**
  * - Filepath: internal/extension/extension.go
@@ -2223,6 +2278,22 @@ export type ExtensionRepo_AnimeTorrentProviderExtensionItem = {
 }
 
 /**
+ * - Filepath: internal/extension_repo/repository.go
+ * - Filename: repository.go
+ * - Package: extension_repo
+ */
+export type ExtensionRepo_CustomSourceExtensionItem = {
+    id: string
+    extensionIdentifier: number
+    name: string
+    /**
+     * ISO 639-1 language code
+     */
+    lang: string
+    settings?: HibikeCustomSource_Settings
+}
+
+/**
  * - Filepath: internal/extension_repo/external.go
  * - Filename: external.go
  * - Package: extension_repo
@@ -2270,6 +2341,16 @@ export type ExtensionRepo_OnlinestreamProviderExtensionItem = {
     lang: string
     episodeServers?: Array<string>
     supportsDub: boolean
+}
+
+/**
+ * - Filepath: internal/extension_repo/external.go
+ * - Filename: external.go
+ * - Package: extension_repo
+ */
+export type ExtensionRepo_RepositoryInstallResponse = {
+    extensions?: Array<Extension_Extension>
+    message: string
 }
 
 /**
@@ -2357,6 +2438,138 @@ export type MalAuthResponse = {
 }
 
 /**
+ * - Filepath: internal/handlers/status.go
+ * - Filename: status.go
+ * - Package: handlers
+ */
+export type MemoryStatsResponse = {
+    /**
+     * bytes allocated and not yet freed
+     */
+    alloc: number
+    /**
+     * bytes allocated (even if freed)
+     */
+    totalAlloc: number
+    /**
+     * bytes obtained from system
+     */
+    sys: number
+    /**
+     * number of pointer lookups
+     */
+    lookups: number
+    /**
+     * number of mallocs
+     */
+    mallocs: number
+    /**
+     * number of frees
+     */
+    frees: number
+    /**
+     * bytes allocated and not yet freed
+     */
+    heapAlloc: number
+    /**
+     * bytes obtained from system
+     */
+    heapSys: number
+    /**
+     * bytes in idle spans
+     */
+    heapIdle: number
+    /**
+     * bytes in non-idle span
+     */
+    heapInuse: number
+    /**
+     * bytes released to OS
+     */
+    heapReleased: number
+    /**
+     * total number of allocated objects
+     */
+    heapObjects: number
+    /**
+     * bytes used by stack allocator
+     */
+    stackInuse: number
+    /**
+     * bytes obtained from system for stack allocator
+     */
+    stackSys: number
+    /**
+     * bytes used by mspan structures
+     */
+    mSpanInuse: number
+    /**
+     * bytes obtained from system for mspan structures
+     */
+    mSpanSys: number
+    /**
+     * bytes used by mcache structures
+     */
+    mCacheInuse: number
+    /**
+     * bytes obtained from system for mcache structures
+     */
+    mCacheSys: number
+    /**
+     * bytes used by the profiling bucket hash table
+     */
+    buckHashSys: number
+    /**
+     * bytes used for garbage collection system metadata
+     */
+    gcSys: number
+    /**
+     * bytes used for other system allocations
+     */
+    otherSys: number
+    /**
+     * next collection will happen when HeapAlloc ≥ this amount
+     */
+    nextGC: number
+    /**
+     * time the last garbage collection finished
+     */
+    lastGC: number
+    /**
+     * cumulative nanoseconds in GC stop-the-world pauses
+     */
+    pauseTotalNs: number
+    /**
+     * nanoseconds in recent GC stop-the-world pause
+     */
+    pauseNs: number
+    /**
+     * number of completed GC cycles
+     */
+    numGC: number
+    /**
+     * number of GC cycles that were forced by the application calling the GC function
+     */
+    numForcedGC: number
+    /**
+     * fraction of this program's available CPU time used by the GC since the program started
+     */
+    gcCPUFraction: number
+    /**
+     * boolean that indicates GC is enabled
+     */
+    enableGC: boolean
+    /**
+     * boolean that indicates GC debug mode is enabled
+     */
+    debugGC: boolean
+    /**
+     * number of goroutines
+     */
+    numGoroutine: number
+}
+
+/**
  * - Filepath: internal/handlers/docs.go
  * - Filename: docs.go
  * - Package: handlers
@@ -2425,7 +2638,7 @@ export type Status = {
     clientPlatform: string
     clientUserAgent: string
     dataDir: string
-    user?: Anime_User
+    user?: User
     settings?: Models_Settings
     version: string
     versionName: string
@@ -2445,6 +2658,45 @@ export type Status = {
     isDesktopSidecar: boolean
     featureFlags?: INTERNAL_FeatureFlags
     serverReady: boolean
+    serverHasPassword: boolean
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Hibikecustomsource
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/extension/hibike/customsource/types.go
+ * - Filename: types.go
+ * - Package: hibikecustomsource
+ */
+export type HibikeCustomSource_ListAnimeResponse = {
+    media?: Array<AL_BaseAnime>
+    page: number
+    totalPages: number
+    total: number
+}
+
+/**
+ * - Filepath: internal/extension/hibike/customsource/types.go
+ * - Filename: types.go
+ * - Package: hibikecustomsource
+ */
+export type HibikeCustomSource_ListMangaResponse = {
+    media?: Array<AL_BaseManga>
+    page: number
+    totalPages: number
+    total: number
+}
+
+/**
+ * - Filepath: internal/extension/hibike/tracker/types.go
+ * - Filename: types.go
+ * - Package: hibikecustomsource
+ */
+export type HibikeCustomSource_Settings = {
+    supportsAnime: boolean
+    supportsManga: boolean
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2467,6 +2719,7 @@ export type HibikeManga_ChapterDetails = {
     language?: string
     rating?: number
     updatedAt?: string
+    localIsPDF?: boolean
 }
 
 /**
@@ -2583,6 +2836,117 @@ export type HibikeTorrent_AnimeTorrent = {
     releaseGroup?: string
     isBestRelease: boolean
     confirmed: boolean
+}
+
+/**
+ * - Filepath: internal/extension/hibike/torrent/types.go
+ * - Filename: types.go
+ * - Package: hibiketorrent
+ */
+export type HibikeTorrent_AnimeTorrentFile = {
+    index: number
+    path: string
+    name: string
+}
+
+/**
+ * - Filepath: internal/extension/hibike/torrent/types.go
+ * - Filename: types.go
+ * - Package: hibiketorrent
+ */
+export type HibikeTorrent_BatchEpisodeFiles = {
+    current: number
+    currentEpisodeNumber: number
+    currentAniDBEpisode: string
+    files?: Array<HibikeTorrent_AnimeTorrentFile>
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// LibraryExplorer
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/library_explorer/filetree.go
+ * - Filename: filetree.go
+ * - Package: library_explorer
+ */
+export type LibraryExplorer_FileTreeJSON = {
+    root?: LibraryExplorer_FileTreeNodeJSON
+    localFiles?: Record<string, Anime_LocalFile>
+}
+
+/**
+ * - Filepath: internal/library_explorer/filetree.go
+ * - Filename: filetree.go
+ * - Package: library_explorer
+ */
+export type LibraryExplorer_FileTreeNodeJSON = {
+    name: string
+    path: string
+    normalizedPath: string
+    kind: LibraryExplorer_NodeKind
+    children?: Array<LibraryExplorer_FileTreeNodeJSON>
+    size?: number
+    localFile?: Anime_LocalFile
+    mediaIds?: Array<number>
+    localFileCount?: number
+    matchedLocalFileCount?: number
+}
+
+/**
+ * - Filepath: internal/library_explorer/filetree.go
+ * - Filename: filetree.go
+ * - Package: library_explorer
+ */
+export type LibraryExplorer_NodeKind = "directory" | "file"
+
+/**
+ * - Filepath: internal/library_explorer/superupdate.go
+ * - Filename: superupdate.go
+ * - Package: library_explorer
+ */
+export type LibraryExplorer_SuperUpdateFileOptions = {
+    path: string
+    newName?: string
+    metadata?: Anime_LocalFileMetadata
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Local
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/local/sync.go
+ * - Filename: sync.go
+ * - Package: local
+ */
+export type Local_QueueMediaTask = {
+    mediaId: number
+    image: string
+    title: string
+    type: string
+}
+
+/**
+ * - Filepath: internal/local/sync.go
+ * - Filename: sync.go
+ * - Package: local
+ */
+export type Local_QueueState = {
+    animeTasks?: Record<number, Local_QueueMediaTask>
+    mangaTasks?: Record<number, Local_QueueMediaTask>
+}
+
+/**
+ * - Filepath: internal/local/manager.go
+ * - Filename: manager.go
+ * - Package: local
+ */
+export type Local_TrackedMediaItem = {
+    mediaId: number
+    type: string
+    animeEntry?: AL_AnimeListEntry
+    mangaEntry?: AL_MangaListEntry
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2749,6 +3113,46 @@ export type Manga_ProviderDownloadMapChapterInfo = {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Mediaplayer
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/mediaplayers/mediaplayer/repository.go
+ * - Filename: repository.go
+ * - Package: mediaplayer
+ */
+export type PlaybackStatus = {
+    completionPercentage: number
+    playing: boolean
+    filename: string
+    path: string
+    /**
+     * in ms
+     */
+    duration: number
+    filepath: string
+    /**
+     * in seconds
+     */
+    currentTimeInSeconds: number
+    /**
+     * in seconds
+     */
+    durationInSeconds: number
+    /**
+     * "file", "stream"
+     */
+    playbackType: PlaybackType
+}
+
+/**
+ * - Filepath: internal/mediaplayers/mediaplayer/repository.go
+ * - Filename: repository.go
+ * - Package: mediaplayer
+ */
+export type PlaybackType = "file" | "stream"
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Mediastream
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2788,18 +3192,18 @@ export type Mediastream_StreamType = "transcode" | "optimized" | "direct"
  * - Package: metadata
  */
 export type Metadata_AnimeMappings = {
-    animeplanetId: string
-    kitsuId: number
-    malId: number
-    type: string
-    anilistId: number
-    anisearchId: number
-    anidbId: number
-    notifymoeId: string
-    livechartId: number
-    thetvdbId: number
-    imdbId: string
-    themoviedbId: string
+    animeplanetId?: string
+    kitsuId?: number
+    malId?: number
+    type?: string
+    anilistId?: number
+    anisearchId?: number
+    anidbId?: number
+    notifymoeId?: string
+    livechartId?: number
+    thetvdbId?: number
+    imdbId?: string
+    themoviedbId?: string
 }
 
 /**
@@ -2834,6 +3238,236 @@ export type Metadata_EpisodeMetadata = {
     seasonNumber: number
     absoluteEpisodeNumber: number
     anidbEid: number
+    /**
+     * Indicates if the episode has a real image
+     */
+    hasImage: boolean
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Mkvparser
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/mkvparser/metadata.go
+ * - Filename: metadata.go
+ * - Package: mkvparser
+ * @description
+ *  AttachmentInfo holds extracted information about an attachment.
+ */
+export type MKVParser_AttachmentInfo = {
+    uid: number
+    filename: string
+    mimetype: string
+    size: number
+    description?: string
+    type?: MKVParser_AttachmentType
+}
+
+/**
+ * - Filepath: internal/mkvparser/metadata.go
+ * - Filename: metadata.go
+ * - Package: mkvparser
+ */
+export type MKVParser_AttachmentType = "font" | "subtitle" | "other"
+
+/**
+ * - Filepath: internal/mkvparser/structs.go
+ * - Filename: structs.go
+ * - Package: mkvparser
+ * @description
+ *  AudioTrack contains audio-specific track data
+ */
+export type MKVParser_AudioTrack = {
+    SamplingFrequency: number
+    Channels: number
+    BitDepth: number
+}
+
+/**
+ * - Filepath: internal/mkvparser/metadata.go
+ * - Filename: metadata.go
+ * - Package: mkvparser
+ * @description
+ *  ChapterInfo holds extracted information about a chapter.
+ */
+export type MKVParser_ChapterInfo = {
+    uid: number
+    /**
+     * Start time in seconds
+     */
+    start: number
+    /**
+     * End time in seconds
+     */
+    end?: number
+    text?: string
+    /**
+     * Legacy 3-letter language codes
+     */
+    languages?: Array<string>
+    /**
+     * IETF language tags
+     */
+    languagesIETF?: Array<string>
+}
+
+/**
+ * - Filepath: internal/mkvparser/structs.go
+ * - Filename: structs.go
+ * - Package: mkvparser
+ * @description
+ *  ContentCompression describes how the track data is compressed
+ */
+export type MKVParser_ContentCompression = {
+    ContentCompAlgo: number
+    ContentCompSettings?: Array<string>
+}
+
+/**
+ * - Filepath: internal/mkvparser/structs.go
+ * - Filename: structs.go
+ * - Package: mkvparser
+ * @description
+ *  ContentEncoding describes a single encoding applied to the track data
+ */
+export type MKVParser_ContentEncoding = {
+    ContentEncodingOrder: number
+    ContentEncodingScope: number
+    ContentEncodingType: number
+    ContentCompression?: MKVParser_ContentCompression
+}
+
+/**
+ * - Filepath: internal/mkvparser/structs.go
+ * - Filename: structs.go
+ * - Package: mkvparser
+ * @description
+ *  ContentEncodings contains information about how the track data is encoded
+ */
+export type MKVParser_ContentEncodings = {
+    ContentEncoding?: Array<MKVParser_ContentEncoding>
+}
+
+/**
+ * - Filepath: internal/mkvparser/metadata.go
+ * - Filename: metadata.go
+ * - Package: mkvparser
+ * @description
+ *  Metadata holds all extracted metadata.
+ */
+export type MKVParser_Metadata = {
+    title?: string
+    /**
+     * Duration in seconds
+     */
+    duration: number
+    /**
+     * Original timecode scale from Info
+     */
+    timecodeScale: number
+    muxingApp?: string
+    writingApp?: string
+    tracks?: Array<MKVParser_TrackInfo>
+    videoTracks?: Array<MKVParser_TrackInfo>
+    audioTracks?: Array<MKVParser_TrackInfo>
+    subtitleTracks?: Array<MKVParser_TrackInfo>
+    chapters?: Array<MKVParser_ChapterInfo>
+    attachments?: Array<MKVParser_AttachmentInfo>
+    /**
+     * RFC 6381 codec string
+     */
+    mimeCodec?: string
+}
+
+/**
+ * - Filepath: internal/mkvparser/mkvparser.go
+ * - Filename: mkvparser.go
+ * - Package: mkvparser
+ * @description
+ *  SubtitleEvent holds information for a single subtitle entry.
+ */
+export type MKVParser_SubtitleEvent = {
+    trackNumber: number
+    /**
+     * Content
+     */
+    text: string
+    /**
+     * Start time in seconds
+     */
+    startTime: number
+    /**
+     * Duration in seconds
+     */
+    duration: number
+    /**
+     * e.g., "S_TEXT/ASS", "S_TEXT/UTF8"
+     */
+    codecID: string
+    extraData?: Record<string, string>
+}
+
+/**
+ * - Filepath: internal/mkvparser/metadata.go
+ * - Filename: metadata.go
+ * - Package: mkvparser
+ * @description
+ *  TrackInfo holds extracted information about a media track.
+ */
+export type MKVParser_TrackInfo = {
+    number: number
+    uid: number
+    /**
+     * "video", "audio", "subtitle", etc.
+     */
+    type: MKVParser_TrackType
+    codecID: string
+    name?: string
+    /**
+     * Best effort language code
+     */
+    language?: string
+    /**
+     * IETF language code
+     */
+    languageIETF?: string
+    default: boolean
+    forced: boolean
+    enabled: boolean
+    /**
+     * Raw CodecPrivate data, often used for subtitle headers (e.g., ASS/SSA styles)
+     */
+    codecPrivate?: string
+    video?: MKVParser_VideoTrack
+    audio?: MKVParser_AudioTrack
+}
+
+/**
+ * - Filepath: internal/mkvparser/metadata.go
+ * - Filename: metadata.go
+ * - Package: mkvparser
+ * @description
+ *  TrackType represents the type of a Matroska track.
+ */
+export type MKVParser_TrackType = "video" |
+    "audio" |
+    "subtitle" |
+    "logo" |
+    "buttons" |
+    "complex" |
+    "unknown"
+
+/**
+ * - Filepath: internal/mkvparser/structs.go
+ * - Filename: structs.go
+ * - Package: mkvparser
+ * @description
+ *  VideoTrack contains video-specific track data
+ */
+export type MKVParser_VideoTrack = {
+    PixelWidth: number
+    PixelHeight: number
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2849,6 +3483,7 @@ export type Models_AnilistSettings = {
     hideAudienceScore: boolean
     enableAdultContent: boolean
     blurAdultContent: boolean
+    disableCacheLayer: boolean
 }
 
 /**
@@ -2934,7 +3569,33 @@ export type Models_DiscordSettings = {
     richPresenceHideSeanimeRepositoryButton: boolean
     richPresenceShowAniListMediaButton: boolean
     richPresenceShowAniListProfileButton: boolean
+    richPresenceUseMediaTitleStatus: boolean
 }
+
+/**
+ * - Filepath: internal/database/models/models.go
+ * - Filename: models.go
+ * - Package: models
+ */
+export type Models_HomeItem = {
+    id: string
+    type: string
+    /**
+     * options chosen by the user
+     */
+    options?: any
+    /**
+     * checks if it's still valid on the client
+     */
+    schemaVersion: number
+}
+
+/**
+ * - Filepath: internal/database/models/models.go
+ * - Filename: models.go
+ * - Package: models
+ */
+export type Models_IntSlice = Array<number>
 
 /**
  * - Filepath: internal/database/models/models.go
@@ -2953,6 +3614,7 @@ export type Models_LibrarySettings = {
     autoUpdateProgress: boolean
     disableUpdateCheck: boolean
     torrentProvider: string
+    autoSelectTorrentProvider: string
     autoScan: boolean
     enableOnlinestream: boolean
     includeOnlineStreamingInLibrary: boolean
@@ -2968,6 +3630,8 @@ export type Models_LibrarySettings = {
     autoSyncOfflineLocalData: boolean
     scannerMatchingThreshold: number
     scannerMatchingAlgorithm: string
+    autoSyncToLocalAccount: boolean
+    autoSaveCurrentMediaOffline: boolean
 }
 
 /**
@@ -2988,6 +3652,7 @@ export type Models_ListSyncSettings = {
 export type Models_MangaSettings = {
     defaultMangaProvider: string
     mangaAutoUpdateProgress: boolean
+    mangaLocalSourceDirectory: string
 }
 
 /**
@@ -3009,6 +3674,10 @@ export type Models_MediaPlayerSettings = {
     mpcPath: string
     mpvSocket: string
     mpvPath: string
+    mpvArgs: string
+    iinaSocket: string
+    iinaPath: string
+    iinaArgs: string
 }
 
 /**
@@ -3038,6 +3707,24 @@ export type Models_MediastreamSettings = {
  * - Filename: models.go
  * - Package: models
  */
+export type Models_NakamaSettings = {
+    enabled: boolean
+    username: string
+    isHost: boolean
+    hostPassword: string
+    remoteServerURL: string
+    remoteServerPassword: string
+    includeNakamaAnimeLibrary: boolean
+    hostShareLocalAnimeLibrary: boolean
+    hostUnsharedAnimeIds: Models_IntSlice
+    hostEnablePortForwarding: boolean
+}
+
+/**
+ * - Filepath: internal/database/models/models.go
+ * - Filename: models.go
+ * - Package: models
+ */
 export type Models_NotificationSettings = {
     disableNotifications: boolean
     disableAutoDownloaderNotifications: boolean
@@ -3059,6 +3746,7 @@ export type Models_Settings = {
     autoDownloader?: Models_AutoDownloaderSettings
     discord?: Models_DiscordSettings
     notifications?: Models_NotificationSettings
+    nakama?: Models_NakamaSettings
     id: number
     createdAt?: string
     updatedAt?: string
@@ -3074,6 +3762,13 @@ export type Models_SilencedMediaEntry = {
     createdAt?: string
     updatedAt?: string
 }
+
+/**
+ * - Filepath: internal/database/models/models.go
+ * - Filename: models.go
+ * - Package: models
+ */
+export type Models_StringSlice = Array<string>
 
 /**
  * - Filepath: internal/database/models/models.go
@@ -3124,6 +3819,8 @@ export type Models_Theme = {
     hideDownloadedEpisodeCardFilename: boolean
     customCSS: string
     mobileCustomCSS: string
+    unpinnedMenuItems: Models_StringSlice
+    homeItems?: Array<string>
     id: number
     createdAt?: string
     updatedAt?: string
@@ -3174,6 +3871,256 @@ export type Models_TorrentstreamSettings = {
     createdAt?: string
     updatedAt?: string
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Nakama
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/nakama/nakama.go
+ * - Filename: nakama.go
+ * - Package: nakama
+ * @description
+ *  HostConnectionStatus represents the status of the host connection
+ */
+export type Nakama_HostConnectionStatus = {
+    connected: boolean
+    authenticated: boolean
+    url: string
+    lastPing?: string
+    peerId: string
+    username: string
+}
+
+/**
+ * - Filepath: internal/nakama/nakama.go
+ * - Filename: nakama.go
+ * - Package: nakama
+ * @description
+ *  MessageResponse represents a response to message sending requests
+ */
+export type Nakama_MessageResponse = {
+    success: boolean
+    message: string
+}
+
+/**
+ * - Filepath: internal/nakama/share.go
+ * - Filename: share.go
+ * - Package: nakama
+ */
+export type Nakama_NakamaAnimeLibrary = {
+    localFiles?: Array<Anime_LocalFile>
+    animeCollection?: AL_AnimeCollection
+}
+
+/**
+ * - Filepath: internal/nakama/nakama.go
+ * - Filename: nakama.go
+ * - Package: nakama
+ * @description
+ *  NakamaStatus represents the overall status of Nakama connections
+ */
+export type Nakama_NakamaStatus = {
+    isHost: boolean
+    connectedPeers?: Array<string>
+    isConnectedToHost: boolean
+    hostConnectionStatus?: Nakama_HostConnectionStatus
+    currentWatchPartySession?: Nakama_WatchPartySession
+}
+
+/**
+ * - Filepath: internal/nakama/watch_party.go
+ * - Filename: watch_party.go
+ * - Package: nakama
+ */
+export type Nakama_OnlineStreamParams = {
+    mediaId: number
+    provider: string
+    server: string
+    dubbed: boolean
+    episodeNumber: number
+    quality: string
+}
+
+/**
+ * - Filepath: internal/nakama/watch_party.go
+ * - Filename: watch_party.go
+ * - Package: nakama
+ */
+export type Nakama_WatchPartySession = {
+    id: string
+    participants?: Record<string, Nakama_WatchPartySessionParticipant>
+    settings?: Nakama_WatchPartySessionSettings
+    createdAt?: string
+    /**
+     * can be nil if not set
+     */
+    currentMediaInfo?: Nakama_WatchPartySessionMediaInfo
+    /**
+     * Whether this session is in relay mode
+     */
+    isRelayMode: boolean
+}
+
+/**
+ * - Filepath: internal/nakama/watch_party.go
+ * - Filename: watch_party.go
+ * - Package: nakama
+ */
+export type Nakama_WatchPartySessionMediaInfo = {
+    mediaId: number
+    episodeNumber: number
+    aniDbEpisode: string
+    /**
+     * "file", "torrent", "debrid", "online"
+     */
+    streamType: string
+    /**
+     * URL for stream playback (e.g. /api/v1/nakama/stream?type=file&path=...)
+     */
+    streamPath: string
+    onlineStreamParams?: Nakama_OnlineStreamParams
+    optionalTorrentStreamStartOptions?: Torrentstream_StartStreamOptions
+}
+
+/**
+ * - Filepath: internal/nakama/watch_party.go
+ * - Filename: watch_party.go
+ * - Package: nakama
+ */
+export type Nakama_WatchPartySessionParticipant = {
+    /**
+     * PeerID (UUID) for unique identification
+     */
+    id: string
+    /**
+     * Display name
+     */
+    username: string
+    isHost: boolean
+    canControl: boolean
+    isReady: boolean
+    lastSeen?: string
+    /**
+     * in milliseconds
+     */
+    latency: number
+    /**
+     * Whether this participant uses Denshi player
+     */
+    useDenshiPlayer: boolean
+    isBuffering: boolean
+    /**
+     * 0.0 to 1.0, how much buffer is available
+     */
+    bufferHealth: number
+    /**
+     * Current playback status
+     */
+    playbackStatus?: PlaybackStatus
+    /**
+     * Whether this peer is the origin for relay mode
+     */
+    isRelayOrigin: boolean
+}
+
+/**
+ * - Filepath: internal/nakama/watch_party.go
+ * - Filename: watch_party.go
+ * - Package: nakama
+ */
+export type Nakama_WatchPartySessionSettings = {
+    /**
+     * Seconds of desync before forcing sync
+     */
+    syncThreshold: number
+    /**
+     * Max time to wait for buffering peers (seconds)
+     */
+    maxBufferWaitTime: number
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Nativeplayer
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/nativeplayer/events.go
+ * - Filename: events.go
+ * - Package: nativeplayer
+ */
+export type NativePlayer_ClientEvent = "video-paused" |
+    "video-resumed" |
+    "video-completed" |
+    "video-ended" |
+    "video-seeked" |
+    "video-error" |
+    "loaded-metadata" |
+    "subtitle-file-uploaded" |
+    "video-terminated" |
+    "video-time-update"
+
+/**
+ * - Filepath: internal/nativeplayer/nativeplayer.go
+ * - Filename: nativeplayer.go
+ * - Package: nativeplayer
+ */
+export type NativePlayer_PlaybackInfo = {
+    id: string
+    streamType: NativePlayer_StreamType
+    /**
+     * e.g. "video/mp4", "video/webm"
+     */
+    mimeType: string
+    /**
+     * URL of the stream
+     */
+    streamUrl: string
+    /**
+     * Size of the stream in bytes
+     */
+    contentLength: number
+    /**
+     * nil if not ebml
+     */
+    mkvMetadata?: MKVParser_Metadata
+    /**
+     * nil if not in list
+     */
+    entryListData?: Anime_EntryListData
+    episode?: Anime_Episode
+    media?: AL_BaseAnime
+    /**
+     * Is the stream from Nakama Watch Party
+     */
+    isNakamaWatchParty: boolean
+}
+
+/**
+ * - Filepath: internal/nativeplayer/events.go
+ * - Filename: events.go
+ * - Package: nativeplayer
+ */
+export type NativePlayer_ServerEvent = "open-and-await" |
+    "abort-open" |
+    "watch" |
+    "subtitle-event" |
+    "set-tracks" |
+    "pause" |
+    "resume" |
+    "seek" |
+    "seek-to" |
+    "error" |
+    "add-subtitle-track" |
+    "terminate"
+
+/**
+ * - Filepath: internal/nativeplayer/nativeplayer.go
+ * - Filename: nativeplayer.go
+ * - Package: nativeplayer
+ */
+export type NativePlayer_StreamType = "torrent" | "localfile" | "debrid"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Onlinestream
@@ -3403,44 +4350,6 @@ export type Summary_ScanSummaryLog = {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Sync
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * - Filepath: internal/sync/sync.go
- * - Filename: sync.go
- * - Package: sync
- */
-export type Sync_QueueMediaTask = {
-    mediaId: number
-    image: string
-    title: string
-    type: string
-}
-
-/**
- * - Filepath: internal/sync/sync.go
- * - Filename: sync.go
- * - Package: sync
- */
-export type Sync_QueueState = {
-    animeTasks?: Record<number, Sync_QueueMediaTask>
-    mangaTasks?: Record<number, Sync_QueueMediaTask>
-}
-
-/**
- * - Filepath: internal/sync/manager.go
- * - Filename: manager.go
- * - Package: sync
- */
-export type Sync_TrackedMediaItem = {
-    mediaId: number
-    type: string
-    animeEntry?: AL_AnimeListEntry
-    mangaEntry?: AL_MangaListEntry
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Torrent
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -3480,7 +4389,7 @@ export type Torrent_SearchData = {
      */
     debridInstantAvailability?: Record<string, Debrid_TorrentItemInstantAvailability>
     /**
-     * AniZip media
+     * Animap media
      */
     animeMetadata?: Metadata_AnimeMetadata
 }
@@ -3535,16 +4444,8 @@ export type TorrentClient_TorrentStatus = "downloading" | "seeding" | "paused" |
  */
 export type Torrentstream_BatchHistoryResponse = {
     torrent?: HibikeTorrent_AnimeTorrent
-}
-
-/**
- * - Filepath: internal/torrentstream/list.go
- * - Filename: list.go
- * - Package: torrentstream
- */
-export type Torrentstream_EpisodeCollection = {
-    episodes?: Array<Anime_Episode>
-    hasMappingError: boolean
+    metadata?: Habari_Metadata
+    batchEpisodeFiles?: HibikeTorrent_BatchEpisodeFiles
 }
 
 /**
@@ -3567,29 +4468,44 @@ export type Torrentstream_FilePreview = {
  * - Filename: stream.go
  * - Package: torrentstream
  */
-export type Torrentstream_PlaybackType = "default" | "externalPlayerLink"
+export type Torrentstream_PlaybackType = "default" | "externalPlayerLink" | "nativeplayer" | "none" | "noneAndAwait"
 
 /**
- * - Filepath: internal/torrentstream/events.go
- * - Filename: events.go
+ * - Filepath: internal/torrentstream/stream.go
+ * - Filename: stream.go
  * - Package: torrentstream
  */
-export type Torrentstream_TorrentLoadingStatus = {
-    torrentBeingChecked: string
-    state: Torrentstream_TorrentLoadingStatusState
+export type Torrentstream_StartStreamOptions = {
+    MediaId: number
+    /**
+     * RELATIVE Episode number to identify the file
+     */
+    EpisodeNumber: number
+    /**
+     * Animap episode
+     */
+    AniDBEpisode: string
+    /**
+     * Automatically select the best file to stream
+     */
+    AutoSelect: boolean
+    /**
+     * Selected torrent (Manual selection)
+     */
+    Torrent?: HibikeTorrent_AnimeTorrent
+    /**
+     * Index of the file to stream (Manual selection)
+     */
+    FileIndex?: number
+    UserAgent: string
+    ClientId: string
+    PlaybackType: Torrentstream_PlaybackType
+    /**
+     * If this is a nakama stream (watch party)
+     */
+    IsNakamaWatchParty: boolean
+    BatchEpisodeFiles?: HibikeTorrent_BatchEpisodeFiles
 }
-
-/**
- * - Filepath: internal/torrentstream/events.go
- * - Filename: events.go
- * - Package: torrentstream
- */
-export type Torrentstream_TorrentLoadingStatusState = "SEARCHING_TORRENTS" |
-    "CHECKING_TORRENT" |
-    "ADDING_TORRENT" |
-    "SELECTING_FILE" |
-    "STARTING_SERVER" |
-    "SENDING_STREAM_TO_MEDIA_PLAYER"
 
 /**
  * - Filepath: internal/torrentstream/client.go
@@ -3607,24 +4523,106 @@ export type Torrentstream_TorrentStatus = {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Tvdb
+// Updater
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * - Filepath: internal/api/tvdb/types.go
- * - Filename: types.go
- * - Package: tvdb
+ * - Filepath: internal/updater/announcement.go
+ * - Filename: announcement.go
+ * - Package: updater
  */
-export type TVDB_Episode = {
-    id: number
-    image: string
-    number: number
-    airedAt: string
+export type Updater_Announcement = {
+    /**
+     * Unique identifier for tracking
+     */
+    id: string
+    /**
+     * Title for dialogs/banners
+     */
+    title?: string
+    /**
+     * The message to display
+     */
+    message: string
+    /**
+     * The type of announcement
+     */
+    type: Updater_AnnouncementType
+    /**
+     * Severity level
+     */
+    severity: Updater_AnnouncementSeverity
+    /**
+     * Date of the announcement
+     */
+    date: any
+    /**
+     * Can user dismiss it
+     */
+    notDismissible: boolean
+    /**
+     * Advanced targeting
+     */
+    conditions?: Updater_AnnouncementConditions
+    /**
+     * Action buttons
+     */
+    actions?: Array<Updater_AnnouncementAction>
+    priority: number
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Updater
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/**
+ * - Filepath: internal/updater/announcement.go
+ * - Filename: announcement.go
+ * - Package: updater
+ */
+export type Updater_AnnouncementAction = {
+    label: string
+    url: string
+    type: string
+}
+
+/**
+ * - Filepath: internal/updater/announcement.go
+ * - Filename: announcement.go
+ * - Package: updater
+ */
+export type Updater_AnnouncementConditions = {
+    /**
+     * ["windows", "darwin", "linux"]
+     */
+    os?: Array<string>
+    /**
+     * ["tauri", "web", "denshi"]
+     */
+    platform?: Array<string>
+    /**
+     * e.g. "<= 2.9.0", "2.9.0"
+     */
+    versionConstraint?: string
+    /**
+     * JSON path to check in user settings
+     */
+    userSettingsPath?: string
+    /**
+     * Expected values at that path
+     */
+    userSettingsValue?: Array<string>
+}
+
+/**
+ * - Filepath: internal/updater/announcement.go
+ * - Filename: announcement.go
+ * - Package: updater
+ */
+export type Updater_AnnouncementSeverity = "info" | "warning" | "error" | "critical"
+
+/**
+ * - Filepath: internal/updater/announcement.go
+ * - Filename: announcement.go
+ * - Package: updater
+ */
+export type Updater_AnnouncementType = "toast" | "dialog" | "banner"
 
 /**
  * - Filepath: internal/updater/check.go
@@ -3669,6 +4667,21 @@ export type Updater_Update = {
     release?: Updater_Release
     current_version?: string
     type: string
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// User
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/user/user.go
+ * - Filename: user.go
+ * - Package: user
+ */
+export type User = {
+    viewer?: AL_GetViewer_Viewer
+    token: string
+    isSimulated: boolean
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

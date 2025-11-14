@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"seanime/internal/extension"
 	"seanime/internal/goja/goja_runtime"
+	"seanime/internal/plugin"
+	goja_util "seanime/internal/util/goja"
 	"time"
 
 	"github.com/dop251/goja"
@@ -20,6 +22,8 @@ type gojaProviderBase struct {
 	program        *goja.Program
 	source         string
 	runtimeManager *goja_runtime.Manager
+	store          *plugin.Store[string, any]
+	scheduler      *goja_util.Scheduler
 }
 
 func initializeProviderBase(ext *extension.Extension, language extension.Language, logger *zerolog.Logger, runtimeManager *goja_runtime.Manager) (*gojaProviderBase, error) {
@@ -44,11 +48,24 @@ func initializeProviderBase(ext *extension.Extension, language extension.Languag
 		return nil, fmt.Errorf("compilation failed: %w", err)
 	}
 
+	providerBase := &gojaProviderBase{
+		ext:            ext,
+		logger:         logger,
+		pool:           nil, // to be set
+		program:        program,
+		source:         source,
+		runtimeManager: runtimeManager,
+		store:          plugin.NewStore[string, any](nil), // Create a store (must be stopped when unloading)
+		scheduler:      goja_util.NewScheduler(),          // Create a scheduler (must be stopped when unloading)
+	}
+
 	initFn := func() *goja.Runtime {
 		vm := goja.New()
 		vm.SetParserOptions(parser.WithDisableSourceMaps)
+		providerBase.store.Bind(vm, providerBase.scheduler)
 		// Bind the shared bindings
 		ShareBinds(vm, logger)
+		goja_util.BindMutable(vm)
 		BindUserConfig(vm, ext, logger)
 		return vm
 	}
@@ -58,14 +75,9 @@ func initializeProviderBase(ext *extension.Extension, language extension.Languag
 		return nil, err
 	}
 
-	return &gojaProviderBase{
-		ext:            ext,
-		logger:         logger,
-		pool:           pool,
-		program:        program,
-		source:         source,
-		runtimeManager: runtimeManager,
-	}, nil
+	providerBase.pool = pool
+
+	return providerBase, nil
 }
 
 func (g *gojaProviderBase) GetExtension() *extension.Extension {
@@ -197,5 +209,6 @@ func (g *gojaProviderBase) PutVM(vm *goja.Runtime) {
 }
 
 func (g *gojaProviderBase) ClearInterrupt() {
-	// no-op
+	g.store.Stop()
+	g.scheduler.Stop()
 }

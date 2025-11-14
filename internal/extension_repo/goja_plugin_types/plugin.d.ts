@@ -248,6 +248,7 @@ declare namespace $ui {
         stack: StackComponentFunction
         text: TextComponentFunction
         button: ButtonComponentFunction
+        anchor: AnchorComponentFunction
         input: InputComponentFunction
         select: SelectComponentFunction
         checkbox: CheckboxComponentFunction
@@ -591,6 +592,7 @@ declare namespace $ui {
         stack: StackComponentFunction
         text: TextComponentFunction
         button: ButtonComponentFunction
+        anchor: AnchorComponentFunction
 
         /** Sets the items in the command palette */
         setItems(items: CommandPaletteItem[]): void
@@ -714,11 +716,25 @@ declare namespace $ui {
         ): void
     }
     /**
+     * @default target="_blank"
+     */
+    type AnchorComponentFunction = {
+        (props: {
+            text: string,
+            href: string,
+            target?: string,
+            onClick?: string
+        } & ComponentProps): void
+        (text: string,
+            props: { href: string, target?: string, onClick?: string } & ComponentProps,
+        ): void
+    }
+    /**
      * @default size="md"
      */
     type InputComponentFunction = {
-        (props: { label?: string, placeholder?: string } & FieldComponentProps): void
-        (label: string, props?: { placeholder?: string } & FieldComponentProps): void
+        (props: { label?: string, placeholder?: string, textarea?: boolean, onSelect?: string } & FieldComponentProps): void
+        (label: string, props?: { placeholder?: string, textarea?: boolean, onSelect?: string } & FieldComponentProps): void
     }
     /**
      * @default size="md"
@@ -894,6 +910,24 @@ declare namespace $ui {
         setDataAttribute(key: string, value: string): void
 
         /**
+         * Sets the inner HTML
+         * @param value - The value to set
+         */
+        setInnerHTML(value: string): void
+
+        /**
+         * Appends the child element
+         * @param child - The child element to append
+         */
+        appendChild(child: DOMElement): void
+
+        /**
+         * Removes the child element
+         * @param child - The child element to remove
+         */
+        removeChild(child: DOMElement): void
+
+        /**
          * Removes a data attribute (data-* attribute)
          * @param key - The data attribute key (without the data- prefix)
          */
@@ -1001,6 +1035,17 @@ declare namespace $ui {
          * @returns A tuple containing a function to stop observing the DOM and a function to refetch observed elements
          */
         observe(selector: string, callback: (elements: DOMElement[]) => void, opts?: DOMQueryElementOptions): [() => void, () => void]
+
+        /**
+         * Observes changes to the DOM in the viewport
+         * @param selector - The selector to observe
+         * @param callback - The callback to call when the DOM changes
+         * @returns A tuple containing a function to stop observing the DOM and a function to refetch observed elements
+         */
+        observeInView(selector: string,
+            callback: (elements: DOMElement[]) => void,
+            opts?: DOMQueryElementOptions & { margin?: string },
+        ): [() => void, () => void]
 
         /**
          * Creates a new DOM element
@@ -1156,7 +1201,7 @@ declare namespace $ui {
          * @returns The watch history item
          * @throws Error if something goes wrong
          */
-        getWatchHistoryItem(mediaId: number): $app.Continuity_WatchHistoryItem
+        getWatchHistoryItem(mediaId: number): $app.Continuity_WatchHistoryItem | undefined
     }
 
     interface AutoScanner {

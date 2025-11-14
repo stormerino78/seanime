@@ -3,7 +3,7 @@ import { useAnimeListTorrentProviderExtensions } from "@/api/hooks/extensions.ho
 import { useSearchTorrent } from "@/api/hooks/torrent_search.hooks"
 import { useServerStatus } from "@/app/(main)/_hooks/use-server-status"
 import { __torrentSearch_selectedTorrentsAtom } from "@/app/(main)/entry/_containers/torrent-search/torrent-search-container"
-import { __torrentSearch_drawerEpisodeAtom, TorrentSelectionType } from "@/app/(main)/entry/_containers/torrent-search/torrent-search-drawer"
+import { __torrentSearch_selectionEpisodeAtom, TorrentSelectionType } from "@/app/(main)/entry/_containers/torrent-search/torrent-search-drawer"
 import { useDebounceWithSet } from "@/hooks/use-debounce"
 import { logger } from "@/lib/helpers/debug"
 import { useAtom } from "jotai/react"
@@ -39,7 +39,11 @@ export function useHandleTorrentSearch(props: TorrentSearchHookProps) {
 
     // Get the selected provider extension
     const defaultProviderExtension = React.useMemo(() => {
-        return providerExtensions?.find(ext => ext.id === serverStatus?.settings?.library?.torrentProvider)
+        const defaultExt = providerExtensions?.find(ext => ext.id === serverStatus?.settings?.library?.torrentProvider)
+        if (!defaultExt) {
+            return providerExtensions?.[0]
+        }
+        return defaultExt
     }, [serverStatus?.settings?.library?.torrentProvider, providerExtensions])
 
     // Gives the ability to change the selected provider extension
@@ -55,7 +59,7 @@ export function useHandleTorrentSearch(props: TorrentSearchHookProps) {
         return providerExtensions?.find(ext => ext.id === selectedProviderExtensionId)
     }, [selectedProviderExtensionId, providerExtensions])
 
-    const [soughtEpisode, setSoughtEpisode] = useAtom(__torrentSearch_drawerEpisodeAtom)
+    const [soughtEpisode, setSoughtEpisode] = useAtom(__torrentSearch_selectionEpisodeAtom)
 
     // Smart search is not enabled for adult content
     const [searchType, setSearchType] = React.useState(!isAdult ? Torrent_SearchType.SMART : Torrent_SearchType.SIMPLE)

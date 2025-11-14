@@ -186,12 +186,13 @@ const (
 	ServerScreenReloadEvent                            ServerEventType = "screen:reload"       // Reload the current screen
 	ServerScreenGetCurrentEvent                        ServerEventType = "screen:get-current"  // Get the current screen
 
-	ServerDOMQueryEvent       ServerEventType = "dom:query"        // When the server queries for DOM elements
-	ServerDOMQueryOneEvent    ServerEventType = "dom:query-one"    // When the server queries for a single DOM element
-	ServerDOMObserveEvent     ServerEventType = "dom:observe"      // When the server starts observing DOM elements
-	ServerDOMStopObserveEvent ServerEventType = "dom:stop-observe" // When the server stops observing DOM elements
-	ServerDOMCreateEvent      ServerEventType = "dom:create"       // When the server creates a DOM element
-	ServerDOMManipulateEvent  ServerEventType = "dom:manipulate"   // When the server manipulates a DOM element
+	ServerDOMQueryEvent         ServerEventType = "dom:query"        // When the server queries for DOM elements
+	ServerDOMQueryOneEvent      ServerEventType = "dom:query-one"    // When the server queries for a single DOM element
+	ServerDOMObserveEvent       ServerEventType = "dom:observe"      // When the server starts observing DOM elements
+	ServerDOMStopObserveEvent   ServerEventType = "dom:stop-observe" // When the server stops observing DOM elements
+	ServerDOMCreateEvent        ServerEventType = "dom:create"       // When the server creates a DOM element
+	ServerDOMManipulateEvent    ServerEventType = "dom:manipulate"   // When the server manipulates a DOM element
+	ServerDOMObserveInViewEvent ServerEventType = "dom:observe-in-view"
 )
 
 type ServerTrayUpdatedEventPayload struct {
@@ -203,9 +204,13 @@ type ServerCommandPaletteUpdatedEventPayload struct {
 	Items       interface{} `json:"items"`
 }
 
-type ServerTrayOpenEventPayload struct{}
+type ServerTrayOpenEventPayload struct {
+	ExtensionID string `json:"extensionId"`
+}
 
-type ServerTrayCloseEventPayload struct{}
+type ServerTrayCloseEventPayload struct {
+	ExtensionID string `json:"extensionId"`
+}
 
 type ServerTrayIconEventPayload struct {
 	ExtensionID   string `json:"extensionId"`
@@ -217,6 +222,7 @@ type ServerTrayIconEventPayload struct {
 	BadgeIntent   string `json:"badgeIntent"`
 	Width         string `json:"width,omitempty"`
 	MinHeight     string `json:"minHeight,omitempty"`
+	IsDrawer      bool   `json:"isDrawer,omitempty"`
 }
 
 type ServerTrayBadgeUpdatedEventPayload struct {
@@ -380,4 +386,13 @@ type ServerDOMManipulateEventPayload struct {
 	Action    string                 `json:"action"`
 	Params    map[string]interface{} `json:"params"`
 	RequestID string                 `json:"requestId"`
+}
+
+type ServerDOMObserveInViewEventPayload struct {
+	Selector         string `json:"selector"`
+	ObserverId       string `json:"observerId"`
+	WithInnerHTML    bool   `json:"withInnerHTML"`
+	WithOuterHTML    bool   `json:"withOuterHTML"`
+	IdentifyChildren bool   `json:"identifyChildren"`
+	Margin           string `json:"margin"`
 }

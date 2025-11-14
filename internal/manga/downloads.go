@@ -6,9 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"seanime/internal/api/anilist"
+	"seanime/internal/extension"
 	hibikemanga "seanime/internal/extension/hibike/manga"
 	"seanime/internal/hook"
 	chapter_downloader "seanime/internal/manga/downloader"
+	manga_providers "seanime/internal/manga/providers"
 	"slices"
 
 	"github.com/goccy/go-json"
@@ -116,12 +118,12 @@ func (r *Repository) GetDownloadedChapterContainers(mangaCollection *anilist.Man
 		provider := pair.provider
 		mediaId := pair.mediaId
 
-		// Get the manga from the collection
-		mangaEntry, ok := mangaCollection.GetListEntryFromMangaId(mediaId)
-		if !ok {
-			r.logger.Warn().Int("mediaId", mediaId).Msg("manga: [GetDownloadedChapterContainers] Manga not found in collection")
-			continue
-		}
+		//// Get the manga from the collection
+		//mangaEntry, ok := mangaCollection.GetListEntryFromMangaId(mediaId)
+		//if !ok {
+		//	r.logger.Warn().Int("mediaId", mediaId).Msg("manga: [GetDownloadedChapterContainers] Manga not found in collection")
+		//	continue
+		//}
 
 		// Get the list of chapters for the manga
 		// Check the permanent file cache
@@ -130,30 +132,31 @@ func (r *Repository) GetDownloadedChapterContainers(mangaCollection *anilist.Man
 			// Check the temporary file cache
 			container, found = r.getChapterContainerFromFilecache(provider, mediaId)
 			if !found {
-				// Get the chapters from the provider
-				// This stays here for backwards compatibility, but ideally the method should not require an internet connection
-				// so this will fail if the chapters were not cached & with no internet
-				opts := GetMangaChapterContainerOptions{
-					Provider: provider,
-					MediaId:  mediaId,
-					Titles:   mangaEntry.GetMedia().GetAllTitles(),
-					Year:     mangaEntry.GetMedia().GetStartYearSafe(),
-				}
-				container, err = r.GetMangaChapterContainer(&opts)
-				if err != nil {
-					r.logger.Error().Err(err).Int("mediaId", mediaId).Msg("manga: [GetDownloadedChapterContainers] Failed to retrieve cached list of manga chapters")
-					continue
-				}
-				// Cache the chapter container in the permanent bucket
-				go func() {
-					chapterContainerKey := getMangaChapterContainerCacheKey(provider, mediaId)
-					chapterContainer, found := r.getChapterContainerFromFilecache(provider, mediaId)
-					if found {
-						// Store the chapter container in the permanent bucket
-						permBucket := getPermanentChapterContainerCacheBucket(provider, mediaId)
-						_ = r.fileCacher.SetPerm(permBucket, chapterContainerKey, chapterContainer)
-					}
-				}()
+				continue
+				//// Get the chapters from the provider
+				//// This stays here for backwards compatibility, but ideally the method should not require an internet connection
+				//// so this will fail if the chapters were not cached & with no internet
+				//opts := GetMangaChapterContainerOptions{
+				//	Provider: provider,
+				//	MediaId:  mediaId,
+				//	Titles:   mangaEntry.GetMedia().GetAllTitles(),
+				//	Year:     mangaEntry.GetMedia().GetStartYearSafe(),
+				//}
+				//container, err = r.GetMangaChapterContainer(&opts)
+				//if err != nil {
+				//	r.logger.Error().Err(err).Int("mediaId", mediaId).Msg("manga: [GetDownloadedChapterContainers] Failed to retrieve cached list of manga chapters")
+				//	continue
+				//}
+				//// Cache the chapter container in the permanent bucket
+				//go func() {
+				//	chapterContainerKey := getMangaChapterContainerCacheKey(provider, mediaId)
+				//	chapterContainer, found := r.getChapterContainerFromFilecache(provider, mediaId)
+				//	if found {
+				//		// Store the chapter container in the permanent bucket
+				//		permBucket := getPermanentChapterContainerCacheBucket(provider, mediaId)
+				//		_ = r.fileCacher.SetPerm(permBucket, chapterContainerKey, chapterContainer)
+				//	}
+				//}()
 			}
 		} else {
 			r.logger.Trace().Int("mediaId", mediaId).Msg("manga: Found chapter container in permanent bucket")
@@ -182,6 +185,30 @@ func (r *Repository) GetDownloadedChapterContainers(mangaCollection *anilist.Man
 		}
 
 		ret = append(ret, downloadedContainer)
+	}
+
+	// Add chapter containers from local provider
+	localProviderB, ok := extension.GetExtension[extension.MangaProviderExtension](r.providerExtensionBank, manga_providers.LocalProvider)
+	if ok {
+		_, ok := localProviderB.GetProvider().(*manga_providers.Local)
+		if ok {
+			for _, list := range mangaCollection.MediaListCollection.GetLists() {
+				for _, entry := range list.GetEntries() {
+					media := entry.GetMedia()
+					opts := GetMangaChapterContainerOptions{
+						Provider: manga_providers.LocalProvider,
+						MediaId:  media.GetID(),
+						Titles:   media.GetAllTitles(),
+						Year:     media.GetStartYearSafe(),
+					}
+					container, err := r.GetMangaChapterContainer(&opts)
+					if err != nil {
+						continue
+					}
+					ret = append(ret, container)
+				}
+			}
+		}
 	}
 
 	// Event

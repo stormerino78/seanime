@@ -1,14 +1,16 @@
 import { Anime_UnknownGroup } from "@/api/generated/types"
 import { useAddUnknownMedia } from "@/api/hooks/anime_collection.hooks"
 import { useAnimeEntryBulkAction } from "@/api/hooks/anime_entries.hooks"
-import { SeaLink } from "@/components/shared/sea-link"
+import { useListCustomSourceExtensions } from "@/api/hooks/extensions.hooks"
+import { useMediaPreviewModal } from "@/app/(main)/_features/media/_containers/media-preview-modal"
 import { AppLayoutStack } from "@/components/ui/app-layout"
 import { Button } from "@/components/ui/button"
 import { Drawer } from "@/components/ui/drawer"
 import { atom } from "jotai"
 import { useAtom } from "jotai/react"
 import React, { useCallback } from "react"
-import { BiLinkExternal, BiPlus } from "react-icons/bi"
+import { BiPlus } from "react-icons/bi"
+import { LuScanEye } from "react-icons/lu"
 import { TbDatabasePlus } from "react-icons/tb"
 import { toast } from "sonner"
 
@@ -16,22 +18,29 @@ export const __unknownMedia_drawerIsOpen = atom(false)
 
 type UnknownMediaManagerProps = {
     unknownGroups: Anime_UnknownGroup[]
+    onActionComplete?: () => void
 }
 
 export function UnknownMediaManager(props: UnknownMediaManagerProps) {
 
-    const { unknownGroups } = props
+    const { unknownGroups, onActionComplete } = props
 
     const [isOpen, setIsOpen] = useAtom(__unknownMedia_drawerIsOpen)
 
     const { mutate: addUnknownMedia, isPending: isAdding } = useAddUnknownMedia()
     const { mutate: performBulkAction, isPending: isUnmatching } = useAnimeEntryBulkAction()
 
+    const { data: customSources } = useListCustomSourceExtensions()
+
     /**
      * Add all unknown media to AniList
      */
     const handleAddUnknownMedia = useCallback(() => {
-        addUnknownMedia({ mediaIds: unknownGroups.map(n => n.mediaId) })
+        addUnknownMedia({ mediaIds: unknownGroups.map(n => n.mediaId) }, {
+            onSuccess: () => {
+                onActionComplete?.()
+            },
+        })
     }, [unknownGroups])
 
     /**
@@ -53,9 +62,14 @@ export function UnknownMediaManager(props: UnknownMediaManagerProps) {
         }, {
             onSuccess: () => {
                 toast.success("Media unmatched")
+                onActionComplete?.()
             },
         })
     }, [])
+
+    const { setPreviewModalMediaId } = useMediaPreviewModal()
+
+    const hasCustomSources = !!customSources?.length
 
     if (unknownGroups.length === 0) return null
 
@@ -75,11 +89,12 @@ export function UnknownMediaManager(props: UnknownMediaManagerProps) {
             <AppLayoutStack className="mt-4">
 
                 <p className="">
-                    Seanime matched {unknownGroups.length} group{unknownGroups.length === 1 ? "" : "s"} to media that {unknownGroups.length === 1
+                    Seanime matched {unknownGroups.length} group{unknownGroups.length === 1 ? "" : "s"} to {unknownGroups.length === 1 ? "a " : ""}series
+                    that {unknownGroups.length === 1
                     ? "is"
                     : "are"} absent from your
-                    AniList collection.<br />
-                    Add the media to be able to see the entry in your library or unmatch them if incorrect.
+                    {!hasCustomSources ? "AniList" : ""} collection.<br />
+                    Add the media to be able to see entries in your library or unmatch them if incorrect.
                 </p>
 
                 <Button
@@ -88,7 +103,7 @@ export function UnknownMediaManager(props: UnknownMediaManagerProps) {
                     loading={isAdding}
                     disabled={isUnmatching}
                 >
-                    Add all to AniList
+                    Add all to {!hasCustomSources ? "AniList" : "collection"}
                 </Button>
 
                 <div className="divide divide-y divide-[--border] space-y-4">
@@ -98,24 +113,29 @@ export function UnknownMediaManager(props: UnknownMediaManagerProps) {
                             <div key={group.mediaId} className="pt-4 space-y-2">
                                 <div className="flex items-center w-full justify-between">
                                     <h4 className="font-semibold flex gap-2 items-center">
-                                        <span>Anilist ID:{" "}</span>
-                                        <SeaLink
-                                            href={`https://anilist.co/anime/${group.mediaId}`}
-                                            target="_blank"
-                                            className="underline text-brand-200 flex gap-1.5 items-center"
+                                        <span>{!hasCustomSources ? "AniList" : "Media"} ID:{" "}</span>
+                                        <p
+                                            className="underline cursor-pointer text-brand-200 flex gap-1.5 items-center"
+                                            onClick={() => { setPreviewModalMediaId(group.mediaId, "anime") }}
                                         >
-                                            {group.mediaId} <BiLinkExternal />
-                                        </SeaLink>
+                                            {group.mediaId} <LuScanEye />
+                                        </p>
                                     </h4>
                                     <div className="flex gap-2 items-center">
                                         <Button
                                             size="sm"
                                             intent="primary-subtle"
                                             disabled={isAdding}
-                                            onClick={() => addUnknownMedia({ mediaIds: [group.mediaId] })}
+                                            onClick={() => {
+                                                addUnknownMedia({ mediaIds: [group.mediaId] }, {
+                                                    onSuccess: () => {
+                                                        onActionComplete?.()
+                                                    },
+                                                })
+                                            }}
                                             leftIcon={<BiPlus />}
                                         >
-                                            Add to AniList
+                                            Add to {!hasCustomSources ? "AniList" : "collection"}
                                         </Button>
                                         <Button
                                             size="sm"

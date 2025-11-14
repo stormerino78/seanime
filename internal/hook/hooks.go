@@ -44,12 +44,20 @@ type Manager interface {
 	OnMissingEpisodesRequested() *Hook[hook_resolver.Resolver]
 	OnMissingEpisodes() *Hook[hook_resolver.Resolver]
 
+	OnAnimeEntryDownloadInfoRequested() *Hook[hook_resolver.Resolver]
+	OnAnimeEntryDownloadInfo() *Hook[hook_resolver.Resolver]
+
+	OnAnimeEpisodeCollectionRequested() *Hook[hook_resolver.Resolver]
+	OnAnimeEpisodeCollection() *Hook[hook_resolver.Resolver]
+
 	// Anime library collection events
 	OnAnimeLibraryCollectionRequested() *Hook[hook_resolver.Resolver]
 	OnAnimeLibraryCollection() *Hook[hook_resolver.Resolver]
 
 	OnAnimeLibraryStreamCollectionRequested() *Hook[hook_resolver.Resolver]
 	OnAnimeLibraryStreamCollection() *Hook[hook_resolver.Resolver]
+
+	OnAnimeScheduleItems() *Hook[hook_resolver.Resolver]
 
 	// Auto Downloader events
 	OnAutoDownloaderRunStarted() *Hook[hook_resolver.Resolver]
@@ -122,6 +130,23 @@ type Manager interface {
 	OnDiscordPresenceAnimeActivityRequested() *Hook[hook_resolver.Resolver]
 	OnDiscordPresenceMangaActivityRequested() *Hook[hook_resolver.Resolver]
 	OnDiscordPresenceClientClosed() *Hook[hook_resolver.Resolver]
+
+	// Anilist events
+	OnListMissedSequelsRequested() *Hook[hook_resolver.Resolver]
+	OnListMissedSequels() *Hook[hook_resolver.Resolver]
+
+	// Anizip events
+	OnAnizipMediaRequested() *Hook[hook_resolver.Resolver]
+	OnAnizipMedia() *Hook[hook_resolver.Resolver]
+
+	// Animap events
+	OnAnimapMediaRequested() *Hook[hook_resolver.Resolver]
+	OnAnimapMedia() *Hook[hook_resolver.Resolver]
+
+	// Filler manager
+	OnHydrateFillerDataRequested() *Hook[hook_resolver.Resolver]
+	OnHydrateOnlinestreamFillerDataRequested() *Hook[hook_resolver.Resolver]
+	OnHydrateEpisodeFillerDataRequested() *Hook[hook_resolver.Resolver]
 }
 
 type ManagerImpl struct {
@@ -155,11 +180,16 @@ type ManagerImpl struct {
 	onAnimeEntryManualMatchBeforeSave *Hook[hook_resolver.Resolver]
 	onMissingEpisodesRequested        *Hook[hook_resolver.Resolver]
 	onMissingEpisodes                 *Hook[hook_resolver.Resolver]
+	onAnimeEntryDownloadInfoRequested *Hook[hook_resolver.Resolver]
+	onAnimeEntryDownloadInfo          *Hook[hook_resolver.Resolver]
+	onAnimeEpisodeCollectionRequested *Hook[hook_resolver.Resolver]
+	onAnimeEpisodeCollection          *Hook[hook_resolver.Resolver]
 	// Anime library collection events
 	onAnimeLibraryCollectionRequested       *Hook[hook_resolver.Resolver]
 	onAnimeLibraryCollection                *Hook[hook_resolver.Resolver]
 	onAnimeLibraryStreamCollectionRequested *Hook[hook_resolver.Resolver]
 	onAnimeLibraryStreamCollection          *Hook[hook_resolver.Resolver]
+	onAnimeScheduleItems                    *Hook[hook_resolver.Resolver]
 	// Auto Downloader events
 	onAutoDownloaderMatchVerified         *Hook[hook_resolver.Resolver]
 	onAutoDownloaderRunStarted            *Hook[hook_resolver.Resolver]
@@ -223,6 +253,19 @@ type ManagerImpl struct {
 	onDiscordPresenceAnimeActivityRequested *Hook[hook_resolver.Resolver]
 	onDiscordPresenceMangaActivityRequested *Hook[hook_resolver.Resolver]
 	onDiscordPresenceClientClosed           *Hook[hook_resolver.Resolver]
+	// Anilist events
+	onListMissedSequelsRequested *Hook[hook_resolver.Resolver]
+	onListMissedSequels          *Hook[hook_resolver.Resolver]
+	// Anizip events
+	onAnizipMediaRequested *Hook[hook_resolver.Resolver]
+	onAnizipMedia          *Hook[hook_resolver.Resolver]
+	// Animap events
+	onAnimapMediaRequested *Hook[hook_resolver.Resolver]
+	onAnimapMedia          *Hook[hook_resolver.Resolver]
+	// Filler manager events
+	onHydrateFillerDataRequested             *Hook[hook_resolver.Resolver]
+	onHydrateOnlinestreamFillerDataRequested *Hook[hook_resolver.Resolver]
+	onHydrateEpisodeFillerDataRequested      *Hook[hook_resolver.Resolver]
 }
 
 type NewHookManagerOptions struct {
@@ -277,11 +320,16 @@ func (m *ManagerImpl) initHooks() {
 	m.onAnimeEntryManualMatchBeforeSave = &Hook[hook_resolver.Resolver]{}
 	m.onMissingEpisodesRequested = &Hook[hook_resolver.Resolver]{}
 	m.onMissingEpisodes = &Hook[hook_resolver.Resolver]{}
+	m.onAnimeEntryDownloadInfoRequested = &Hook[hook_resolver.Resolver]{}
+	m.onAnimeEntryDownloadInfo = &Hook[hook_resolver.Resolver]{}
+	m.onAnimeEpisodeCollectionRequested = &Hook[hook_resolver.Resolver]{}
+	m.onAnimeEpisodeCollection = &Hook[hook_resolver.Resolver]{}
 	// Anime library collection events
 	m.onAnimeLibraryCollectionRequested = &Hook[hook_resolver.Resolver]{}
 	m.onAnimeLibraryCollection = &Hook[hook_resolver.Resolver]{}
 	m.onAnimeLibraryStreamCollectionRequested = &Hook[hook_resolver.Resolver]{}
 	m.onAnimeLibraryStreamCollection = &Hook[hook_resolver.Resolver]{}
+	m.onAnimeScheduleItems = &Hook[hook_resolver.Resolver]{}
 	// Auto Downloader events
 	m.onAutoDownloaderMatchVerified = &Hook[hook_resolver.Resolver]{}
 	m.onAutoDownloaderRunStarted = &Hook[hook_resolver.Resolver]{}
@@ -345,6 +393,19 @@ func (m *ManagerImpl) initHooks() {
 	m.onDiscordPresenceAnimeActivityRequested = &Hook[hook_resolver.Resolver]{}
 	m.onDiscordPresenceMangaActivityRequested = &Hook[hook_resolver.Resolver]{}
 	m.onDiscordPresenceClientClosed = &Hook[hook_resolver.Resolver]{}
+	// Anilist events
+	m.onListMissedSequelsRequested = &Hook[hook_resolver.Resolver]{}
+	m.onListMissedSequels = &Hook[hook_resolver.Resolver]{}
+	// Anizip events
+	m.onAnizipMediaRequested = &Hook[hook_resolver.Resolver]{}
+	m.onAnizipMedia = &Hook[hook_resolver.Resolver]{}
+	// Animap events
+	m.onAnimapMediaRequested = &Hook[hook_resolver.Resolver]{}
+	m.onAnimapMedia = &Hook[hook_resolver.Resolver]{}
+	// Filler manager events
+	m.onHydrateFillerDataRequested = &Hook[hook_resolver.Resolver]{}
+	m.onHydrateOnlinestreamFillerDataRequested = &Hook[hook_resolver.Resolver]{}
+	m.onHydrateEpisodeFillerDataRequested = &Hook[hook_resolver.Resolver]{}
 }
 
 func (m *ManagerImpl) OnGetAnime() *Hook[hook_resolver.Resolver] {
@@ -538,6 +599,34 @@ func (m *ManagerImpl) OnMissingEpisodes() *Hook[hook_resolver.Resolver] {
 	return m.onMissingEpisodes
 }
 
+func (m *ManagerImpl) OnAnimeEntryDownloadInfoRequested() *Hook[hook_resolver.Resolver] {
+	if m == nil {
+		return &Hook[hook_resolver.Resolver]{}
+	}
+	return m.onAnimeEntryDownloadInfoRequested
+}
+
+func (m *ManagerImpl) OnAnimeEntryDownloadInfo() *Hook[hook_resolver.Resolver] {
+	if m == nil {
+		return &Hook[hook_resolver.Resolver]{}
+	}
+	return m.onAnimeEntryDownloadInfo
+}
+
+func (m *ManagerImpl) OnAnimeEpisodeCollectionRequested() *Hook[hook_resolver.Resolver] {
+	if m == nil {
+		return &Hook[hook_resolver.Resolver]{}
+	}
+	return m.onAnimeEpisodeCollectionRequested
+}
+
+func (m *ManagerImpl) OnAnimeEpisodeCollection() *Hook[hook_resolver.Resolver] {
+	if m == nil {
+		return &Hook[hook_resolver.Resolver]{}
+	}
+	return m.onAnimeEpisodeCollection
+}
+
 // Anime library collection events
 
 func (m *ManagerImpl) OnAnimeLibraryCollectionRequested() *Hook[hook_resolver.Resolver] {
@@ -566,6 +655,13 @@ func (m *ManagerImpl) OnAnimeLibraryStreamCollection() *Hook[hook_resolver.Resol
 		return &Hook[hook_resolver.Resolver]{}
 	}
 	return m.onAnimeLibraryStreamCollection
+}
+
+func (m *ManagerImpl) OnAnimeScheduleItems() *Hook[hook_resolver.Resolver] {
+	if m == nil {
+		return &Hook[hook_resolver.Resolver]{}
+	}
+	return m.onAnimeScheduleItems
 }
 
 // Auto Downloader events
@@ -949,4 +1045,75 @@ func (m *ManagerImpl) OnDiscordPresenceClientClosed() *Hook[hook_resolver.Resolv
 		return &Hook[hook_resolver.Resolver]{}
 	}
 	return m.onDiscordPresenceClientClosed
+}
+
+// Anilist events
+
+func (m *ManagerImpl) OnListMissedSequelsRequested() *Hook[hook_resolver.Resolver] {
+	if m == nil {
+		return &Hook[hook_resolver.Resolver]{}
+	}
+	return m.onListMissedSequelsRequested
+}
+
+func (m *ManagerImpl) OnListMissedSequels() *Hook[hook_resolver.Resolver] {
+	if m == nil {
+		return &Hook[hook_resolver.Resolver]{}
+	}
+	return m.onListMissedSequels
+}
+
+// Anizip events
+
+func (m *ManagerImpl) OnAnizipMediaRequested() *Hook[hook_resolver.Resolver] {
+	if m == nil {
+		return &Hook[hook_resolver.Resolver]{}
+	}
+	return m.onAnizipMediaRequested
+}
+
+func (m *ManagerImpl) OnAnizipMedia() *Hook[hook_resolver.Resolver] {
+	if m == nil {
+		return &Hook[hook_resolver.Resolver]{}
+	}
+	return m.onAnizipMedia
+}
+
+// Animap events
+
+func (m *ManagerImpl) OnAnimapMediaRequested() *Hook[hook_resolver.Resolver] {
+	if m == nil {
+		return &Hook[hook_resolver.Resolver]{}
+	}
+	return m.onAnimapMediaRequested
+}
+
+func (m *ManagerImpl) OnAnimapMedia() *Hook[hook_resolver.Resolver] {
+	if m == nil {
+		return &Hook[hook_resolver.Resolver]{}
+	}
+	return m.onAnimapMedia
+}
+
+// Filler manager events
+
+func (m *ManagerImpl) OnHydrateFillerDataRequested() *Hook[hook_resolver.Resolver] {
+	if m == nil {
+		return &Hook[hook_resolver.Resolver]{}
+	}
+	return m.onHydrateFillerDataRequested
+}
+
+func (m *ManagerImpl) OnHydrateOnlinestreamFillerDataRequested() *Hook[hook_resolver.Resolver] {
+	if m == nil {
+		return &Hook[hook_resolver.Resolver]{}
+	}
+	return m.onHydrateOnlinestreamFillerDataRequested
+}
+
+func (m *ManagerImpl) OnHydrateEpisodeFillerDataRequested() *Hook[hook_resolver.Resolver] {
+	if m == nil {
+		return &Hook[hook_resolver.Resolver]{}
+	}
+	return m.onHydrateEpisodeFillerDataRequested
 }

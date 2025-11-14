@@ -9,6 +9,7 @@ import { RadioGroup } from "@/components/ui/radio-group"
 import { Select } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { TextInput } from "@/components/ui/text-input"
+import { Textarea } from "@/components/ui/textarea"
 import { useDebounce } from "@/hooks/use-debounce"
 import React, { useEffect } from "react"
 import { Controller, useForm } from "react-hook-form"
@@ -71,6 +72,48 @@ export function PluginButton(props: PluginButtonProps) {
     )
 }
 
+///////////////////
+
+interface PluginAnchorProps {
+    text?: string
+    href?: string
+    target?: string
+    onClick?: string
+    style?: React.CSSProperties
+    className?: string
+}
+
+export function PluginAnchor(props: PluginAnchorProps) {
+    const { sendEventHandlerTriggeredEvent } = usePluginSendEventHandlerTriggeredEvent()
+    const { trayIcon } = usePluginTray()
+
+    function handleClick(e: React.MouseEvent) {
+        if (props.onClick) {
+            e.preventDefault()
+            sendEventHandlerTriggeredEvent({
+                handlerName: props.onClick,
+                event: {
+                    href: props.href,
+                    text: props.text,
+                },
+            }, trayIcon.extensionId)
+        }
+    }
+
+    return (
+        <a
+            href={props.href}
+            target={props.target || "_blank"}
+            rel="noopener noreferrer"
+            style={props.style}
+            onClick={handleClick}
+            className={cn("underline cursor-pointer", props.className)}
+        >
+            {props.text || "Link"}
+        </a>
+    )
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Fields
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -82,10 +125,12 @@ interface InputProps {
     style?: React.CSSProperties
     value?: string
     onChange?: string
+    onSelect?: string
     fieldRef?: FieldRef<string>
     disabled?: boolean
     size?: "sm" | "md" | "lg"
     className?: string
+    textarea?: boolean
 }
 
 export function PluginInput(props: InputProps) {
@@ -94,6 +139,9 @@ export function PluginInput(props: InputProps) {
     const { sendFieldRefSendValueEvent } = usePluginSendFieldRefSendValueEvent()
     const [value, setValue] = React.useState(props.value || props.fieldRef?.current)
     const debouncedValue = useDebounce(value, 200)
+
+    const inputRef = React.useRef<HTMLInputElement>(null)
+    const textareaRef = React.useRef<HTMLTextAreaElement>(null)
 
     const firstRender = React.useRef(true)
     useEffect(() => {
@@ -123,6 +171,51 @@ export function PluginInput(props: InputProps) {
         }
     }, trayIcon.extensionId)
 
+    const [selectedText, setSelectedText] = React.useState<{ value: string, cursorStart: number, cursorEnd: number } | null>(null)
+    const debouncedSelectedText = useDebounce(selectedText, 400)
+
+    function handleTextSelected(e: any) {
+        if (props.onSelect) {
+            const cursorStart = props.textarea ? textareaRef.current?.selectionStart : inputRef.current?.selectionStart
+            const cursorEnd = props.textarea ? textareaRef.current?.selectionEnd : inputRef.current?.selectionEnd
+            const selectedText = props.textarea ? textareaRef.current?.value.slice(cursorStart ?? 0, cursorEnd ?? 0) : inputRef.current?.value.slice(
+                cursorStart ?? 0,
+                cursorEnd ?? 0)
+
+            setSelectedText({ value: selectedText ?? "", cursorStart: cursorStart ?? 0, cursorEnd: cursorEnd ?? 0 })
+        }
+    }
+
+    useEffect(() => {
+        if (props.onSelect && debouncedSelectedText) {
+            sendEventHandlerTriggeredEvent({
+                handlerName: props.onSelect,
+                event: {
+                    value: debouncedSelectedText.value,
+                    cursorStart: debouncedSelectedText.cursorStart,
+                    cursorEnd: debouncedSelectedText.cursorEnd,
+                },
+            }, trayIcon.extensionId)
+        }
+    }, [debouncedSelectedText?.value, debouncedSelectedText?.cursorStart, debouncedSelectedText?.cursorEnd])
+
+    if (props.textarea) {
+        return (
+            <Textarea
+                id={props.id}
+                label={props.label}
+                placeholder={props.placeholder}
+                style={props.style}
+                value={value}
+                onValueChange={(value) => setValue(value)}
+                onSelect={handleTextSelected}
+                disabled={props.disabled}
+                fieldClass={props.className}
+                ref={textareaRef}
+            />
+        )
+    }
+
     return (
         <TextInput
             id={props.id}
@@ -131,9 +224,11 @@ export function PluginInput(props: InputProps) {
             style={props.style}
             value={value}
             onValueChange={(value) => setValue(value)}
+            onSelect={handleTextSelected}
             disabled={props.disabled}
             size={props.size || "md"}
             fieldClass={props.className}
+            ref={inputRef}
         />
     )
 }
@@ -320,7 +415,7 @@ export function PluginSwitch(props: SwitchProps) {
             label={props.label}
             style={props.style}
             value={value}
-            onValueChange={(value) => typeof value === "boolean" && setValue(value)}
+            onValueChange={(value) => setValue(value)}
             disabled={props.disabled}
             size={props.size || "sm"}
             fieldClass={props.className}
@@ -448,14 +543,27 @@ export function PluginStack({ items = [], style, gap = 2, className }: StackProp
 interface DivProps {
     items?: any[]
     style?: React.CSSProperties
+    onClick?: string
     className?: string
 }
 
-export function PluginDiv({ items = [], style, className }: DivProps) {
+export function PluginDiv({ items = [], style, onClick, className }: DivProps) {
+    const { sendEventHandlerTriggeredEvent } = usePluginSendEventHandlerTriggeredEvent()
+    const { trayIcon } = usePluginTray()
+
+    function handleClick() {
+        if (onClick) {
+            sendEventHandlerTriggeredEvent({
+                handlerName: onClick,
+                event: {},
+            }, trayIcon.extensionId)
+        }
+    }
     return (
         <div
             className={cn("relative", className)}
             style={style}
+            onClick={handleClick}
         >
             {items && items.length > 0 && <RenderPluginComponents data={items} />}
         </div>

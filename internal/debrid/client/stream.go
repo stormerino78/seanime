@@ -6,13 +6,17 @@ import (
 	"fmt"
 	"seanime/internal/database/db_bridge"
 	"seanime/internal/debrid/debrid"
+	"seanime/internal/directstream"
 	"seanime/internal/events"
 	hibiketorrent "seanime/internal/extension/hibike/torrent"
 	"seanime/internal/hook"
 	"seanime/internal/library/playbackmanager"
 	"seanime/internal/util"
 	"strconv"
+	"sync"
 	"time"
+
+	"github.com/samber/mo"
 )
 
 type (
@@ -20,6 +24,10 @@ type (
 		repository            *Repository
 		currentTorrentItemId  string
 		downloadCtxCancelFunc context.CancelFunc
+
+		currentStreamUrl string
+
+		playbackSubscriberCtxCancelFunc context.CancelFunc
 	}
 
 	StreamPlaybackType string
@@ -33,16 +41,17 @@ type (
 	}
 
 	StartStreamOptions struct {
-		MediaId       int
-		EpisodeNumber int                         // RELATIVE Episode number to identify the file
-		AniDBEpisode  string                      // Anizip episode
-		Torrent       *hibiketorrent.AnimeTorrent // Selected torrent
-		FileId        string                      // File ID or index
-		FileIndex     *int                        // Index of the file to stream (Manual selection)
-		UserAgent     string
-		ClientId      string
-		PlaybackType  StreamPlaybackType
-		AutoSelect    bool
+		MediaId           int
+		EpisodeNumber     int                         // RELATIVE Episode number to identify the file
+		AniDBEpisode      string                      // Anizip episode
+		Torrent           *hibiketorrent.AnimeTorrent // Selected torrent
+		FileId            string                      // File ID or index
+		FileIndex         *int                        // Index of the file to stream (Manual selection)
+		UserAgent         string
+		ClientId          string
+		PlaybackType      StreamPlaybackType
+		AutoSelect        bool
+		BatchEpisodeFiles *hibiketorrent.BatchEpisodeFiles
 	}
 
 	CancelStreamOptions struct {
@@ -68,13 +77,18 @@ func NewStreamManager(repository *Repository) *StreamManager {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const (
+	PlaybackTypeNone           StreamPlaybackType = "none"
+	PlaybackTypeNoneAndAwait   StreamPlaybackType = "noneAndAwait"
 	PlaybackTypeDefault        StreamPlaybackType = "default"
+	PlaybackTypeNativePlayer   StreamPlaybackType = "nativeplayer"
 	PlaybackTypeExternalPlayer StreamPlaybackType = "externalPlayerLink"
 )
 
 // startStream is called by the client to start streaming a torrent
-func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
+func (s *StreamManager) startStream(ctx context.Context, opts *StartStreamOptions) (err error) {
 	defer util.HandlePanicInModuleWithError("debrid/client/StartStream", &err)
+
+	s.repository.previousStreamOptions = mo.Some(opts)
 
 	s.repository.logger.Info().
 		Str("clientId", opts.ClientId).
@@ -87,16 +101,31 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 		s.downloadCtxCancelFunc = nil
 	}
 
+	if s.playbackSubscriberCtxCancelFunc != nil {
+		s.playbackSubscriberCtxCancelFunc()
+		s.playbackSubscriberCtxCancelFunc = nil
+	}
+
 	provider, err := s.repository.GetProvider()
 	if err != nil {
 		return fmt.Errorf("debridstream: Failed to start stream: %w", err)
 	}
 
+	s.repository.wsEventManager.SendEvent(events.ShowIndefiniteLoader, "debridstream")
+	//defer func() {
+	//	s.repository.wsEventManager.SendEvent(events.HideIndefiniteLoader, "debridstream")
+	//}()
+
+	if opts.PlaybackType == PlaybackTypeNativePlayer {
+		s.repository.directStreamManager.PrepareNewStream(opts.ClientId, "Selecting torrent...")
+	}
+
 	//
 	// Get the media info
 	//
-	media, _, err := s.getMediaInfo(opts.MediaId)
+	media, _, err := s.getMediaInfo(ctx, opts.MediaId)
 	if err != nil {
+		s.repository.wsEventManager.SendEvent(events.HideIndefiniteLoader, "debridstream")
 		return err
 	}
 
@@ -116,11 +145,15 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 
 		st, fi, err := s.repository.findBestTorrent(provider, media, opts.EpisodeNumber)
 		if err != nil {
+			if opts.PlaybackType == PlaybackTypeNativePlayer {
+				s.repository.directStreamManager.AbortOpen(opts.ClientId, err)
+			}
 			s.repository.wsEventManager.SendEvent(events.DebridStreamState, StreamState{
 				Status:      StreamStatusFailed,
 				TorrentName: "-",
 				Message:     fmt.Sprintf("Failed to select best torrent, %v", err),
 			})
+			s.repository.wsEventManager.SendEvent(events.HideIndefiniteLoader, "debridstream")
 			return fmt.Errorf("debridstream: Failed to start stream: %w", err)
 		}
 		selectedTorrent = st
@@ -128,6 +161,7 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 	} else {
 		// Manual selection
 		if selectedTorrent == nil {
+			s.repository.wsEventManager.SendEvent(events.HideIndefiniteLoader, "debridstream")
 			return fmt.Errorf("debridstream: Failed to start stream, no torrent provided")
 		}
 
@@ -145,11 +179,15 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 			}
 			st, fi, err := s.repository.findBestTorrentFromManualSelection(provider, selectedTorrent, media, opts.EpisodeNumber, chosenFileIndex)
 			if err != nil {
+				if opts.PlaybackType == PlaybackTypeNativePlayer {
+					s.repository.directStreamManager.AbortOpen(opts.ClientId, err)
+				}
 				s.repository.wsEventManager.SendEvent(events.DebridStreamState, StreamState{
 					Status:      StreamStatusFailed,
 					TorrentName: selectedTorrent.Name,
 					Message:     fmt.Sprintf("Failed to analyze torrent, %v", err),
 				})
+				s.repository.wsEventManager.SendEvent(events.HideIndefiniteLoader, "debridstream")
 				return fmt.Errorf("debridstream: Failed to analyze torrent: %w", err)
 			}
 			selectedTorrent = st
@@ -158,6 +196,10 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 	}
 
 	if selectedTorrent == nil {
+		if opts.PlaybackType == PlaybackTypeNativePlayer {
+			s.repository.directStreamManager.AbortOpen(opts.ClientId, fmt.Errorf("debridstream: Failed to start stream, no torrent provided"))
+		}
+		s.repository.wsEventManager.SendEvent(events.HideIndefiniteLoader, "debridstream")
 		return fmt.Errorf("debridstream: Failed to start stream, no torrent provided")
 	}
 
@@ -179,6 +221,7 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 			TorrentName: selectedTorrent.Name,
 			Message:     fmt.Sprintf("Failed to add torrent, %v", err),
 		})
+		s.repository.wsEventManager.SendEvent(events.HideIndefiniteLoader, "debridstream")
 		return fmt.Errorf("debridstream: Failed to add torrent: %w", err)
 	}
 
@@ -189,9 +232,20 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	s.downloadCtxCancelFunc = cancelCtx
 
+	readyCh := make(chan struct{})
+	readyOnce := sync.Once{}
+	ready := func() {
+		readyOnce.Do(func() {
+			close(readyCh)
+		})
+	}
+
 	// Launch a goroutine that will listen to the added torrent's status
 	go func(ctx context.Context) {
 		defer util.HandlePanicInModuleThen("debrid/client/StartStream", func() {})
+		defer func() {
+			s.repository.wsEventManager.SendEvent(events.HideIndefiniteLoader, "debridstream")
+		}()
 
 		defer func() {
 			// Cancel the context
@@ -213,6 +267,10 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 
 		go func() {
 			for item := range itemCh {
+				if opts.PlaybackType == PlaybackTypeNativePlayer {
+					s.repository.directStreamManager.PrepareNewStream(opts.ClientId, fmt.Sprintf("Awaiting stream: %d%%", item.CompletionPercentage))
+				}
+
 				s.repository.wsEventManager.SendEvent(events.DebridStreamState, StreamState{
 					Status:      StreamStatusDownloading,
 					TorrentName: item.Name,
@@ -234,6 +292,7 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 
 		if ctx.Err() != nil {
 			s.repository.logger.Debug().Msg("debridstream: Context cancelled, stopping stream")
+			ready()
 			return
 		}
 
@@ -246,6 +305,7 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 					Message:     fmt.Sprintf("Failed to get stream URL, %v", err),
 				})
 			}
+			ready()
 			return
 		}
 
@@ -313,11 +373,17 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 
 		if ctx.Err() != nil {
 			s.repository.logger.Debug().Msg("debridstream: Context cancelled, stopping stream")
+			ready()
 			return
 		}
 
+		windowTitle := media.GetPreferredTitle()
+		if !media.IsMovieOrSingleEpisode() {
+			windowTitle += fmt.Sprintf(" - Episode %s", aniDbEpisode)
+		}
+
 		event := &DebridSendStreamToMediaPlayerEvent{
-			WindowTitle:  fmt.Sprintf("%s - Episode %s", selectedTorrent.Name, aniDbEpisode),
+			WindowTitle:  windowTitle,
 			StreamURL:    streamUrl,
 			Media:        media.ToBaseAnime(),
 			AniDbEpisode: aniDbEpisode,
@@ -327,7 +393,7 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 		if err != nil {
 			s.repository.logger.Err(err).Msg("debridstream: Failed to send stream to media player")
 		}
-		windowTitle := event.WindowTitle
+		windowTitle = event.WindowTitle
 		streamUrl = event.StreamURL
 		media := event.Media
 		aniDbEpisode := event.AniDbEpisode
@@ -335,15 +401,42 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 
 		if event.DefaultPrevented {
 			s.repository.logger.Debug().Msg("debridstream: Stream prevented by hook")
+			ready()
 			return
 		}
 
+		s.currentStreamUrl = streamUrl
+
 		switch playbackType {
+		case PlaybackTypeNone:
+			// No playback type selected, just signal to the client that the stream is ready
+			s.repository.wsEventManager.SendEvent(events.DebridStreamState, StreamState{
+				Status:      StreamStatusReady,
+				TorrentName: selectedTorrent.Name,
+				Message:     "External player link sent",
+			})
+		case PlaybackTypeNoneAndAwait:
+			// No playback type selected, just signal to the client that the stream is ready
+			s.repository.wsEventManager.SendEvent(events.DebridStreamState, StreamState{
+				Status:      StreamStatusReady,
+				TorrentName: selectedTorrent.Name,
+				Message:     "External player link sent",
+			})
+			ready()
+
 		case PlaybackTypeDefault:
 			//
 			// Start the stream
 			//
 			s.repository.logger.Debug().Msg("debridstream: Starting the media player")
+
+			s.repository.wsEventManager.SendEvent(events.InfoToast, "Sending stream to media player...")
+			s.repository.wsEventManager.SendEvent(events.ShowIndefiniteLoader, "debridstream")
+
+			var playbackSubscriberCtx context.Context
+			playbackSubscriberCtx, s.playbackSubscriberCtxCancelFunc = context.WithCancel(context.Background())
+			playbackSubscriber := s.repository.playbackManager.SubscribeToPlaybackStatus("debridstream")
+
 			// Sends the stream to the media player
 			// DEVNOTE: Events are handled by the torrentstream.Repository module
 			err = s.repository.playbackManager.StartStreamingUsingMediaPlayer(windowTitle, &playbackmanager.StartPlayingOptions{
@@ -352,13 +445,45 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 				ClientId:  opts.ClientId,
 			}, media, aniDbEpisode)
 			if err != nil {
+				go s.repository.playbackManager.UnsubscribeFromPlaybackStatus("debridstream")
+				if s.playbackSubscriberCtxCancelFunc != nil {
+					s.playbackSubscriberCtxCancelFunc()
+					s.playbackSubscriberCtxCancelFunc = nil
+				}
 				// Failed to start the stream, we'll drop the torrents and stop the server
 				s.repository.wsEventManager.SendEvent(events.DebridStreamState, StreamState{
 					Status:      StreamStatusFailed,
 					TorrentName: selectedTorrent.Name,
 					Message:     fmt.Sprintf("Failed to send the stream to the media player, %v", err),
 				})
+				return
 			}
+
+			// Listen to the playback status
+			// Reset the current stream url when playback is stopped
+			go func() {
+				defer util.HandlePanicInModuleThen("debridstream/PlaybackSubscriber", func() {})
+				defer func() {
+					if s.playbackSubscriberCtxCancelFunc != nil {
+						s.playbackSubscriberCtxCancelFunc()
+						s.playbackSubscriberCtxCancelFunc = nil
+					}
+				}()
+				select {
+				case <-playbackSubscriberCtx.Done():
+					s.repository.wsEventManager.SendEvent(events.HideIndefiniteLoader, "debridstream")
+					s.repository.playbackManager.UnsubscribeFromPlaybackStatus("debridstream")
+					s.currentStreamUrl = ""
+				case event := <-playbackSubscriber.EventCh:
+					switch event.(type) {
+					case playbackmanager.StreamStartedEvent:
+						s.repository.wsEventManager.SendEvent(events.HideIndefiniteLoader, "debridstream")
+					case playbackmanager.StreamStoppedEvent:
+						go s.repository.playbackManager.UnsubscribeFromPlaybackStatus("debridstream")
+						s.currentStreamUrl = ""
+					}
+				}
+			}()
 
 		case PlaybackTypeExternalPlayer:
 			// Send the external player link
@@ -366,10 +491,12 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 				Url           string `json:"url"`
 				MediaId       int    `json:"mediaId"`
 				EpisodeNumber int    `json:"episodeNumber"`
+				MediaTitle    string `json:"mediaTitle"`
 			}{
 				Url:           streamUrl,
 				MediaId:       opts.MediaId,
 				EpisodeNumber: opts.EpisodeNumber,
+				MediaTitle:    media.GetPreferredTitle(),
 			})
 
 			// Signal to the client that the torrent has started playing (remove loading status)
@@ -379,12 +506,32 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 				TorrentName: selectedTorrent.Name,
 				Message:     "External player link sent",
 			})
+		case PlaybackTypeNativePlayer:
+			err := s.repository.directStreamManager.PlayDebridStream(ctx, directstream.PlayDebridStreamOptions{
+				StreamUrl:    streamUrl,
+				MediaId:      media.ID,
+				AnidbEpisode: opts.AniDBEpisode,
+				Media:        media,
+				Torrent:      selectedTorrent,
+				FileId:       fileId,
+				UserAgent:    opts.UserAgent,
+				ClientId:     opts.ClientId,
+				AutoSelect:   false,
+			})
+			if err != nil {
+				s.repository.logger.Error().Err(err).Msg("directstream: Failed to prepare new stream")
+				return
+			}
 		}
 
 		go func() {
 			defer util.HandlePanicInModuleThen("debridstream/AddBatchHistory", func() {})
 
-			_ = db_bridge.InsertTorrentstreamHistory(s.repository.db, media.GetID(), selectedTorrent)
+			if selectedTorrent.IsBatch {
+				_ = db_bridge.InsertTorrentstreamHistory(s.repository.db, media.GetID(), selectedTorrent, opts.BatchEpisodeFiles)
+
+				s.repository.wsEventManager.SendEvent(events.InvalidateQueries, []string{events.GetTorrentstreamBatchHistoryEndpoint})
+			}
 		}()
 	}(ctx)
 
@@ -395,6 +542,12 @@ func (s *StreamManager) startStream(opts *StartStreamOptions) (err error) {
 	})
 	s.repository.logger.Info().Msg("debridstream: Stream started")
 
+	if opts.PlaybackType == PlaybackTypeNoneAndAwait {
+		s.repository.logger.Debug().Msg("debridstream: Waiting for stream to be ready")
+		<-readyCh
+		s.repository.wsEventManager.SendEvent(events.HideIndefiniteLoader, "debridstream")
+	}
+
 	return nil
 }
 
@@ -403,6 +556,10 @@ func (s *StreamManager) cancelStream(opts *CancelStreamOptions) {
 		s.downloadCtxCancelFunc()
 		s.downloadCtxCancelFunc = nil
 	}
+
+	s.repository.wsEventManager.SendEvent(events.ShowIndefiniteLoader, "debridstream")
+
+	s.currentStreamUrl = ""
 
 	if opts.RemoveTorrent && s.currentTorrentItemId != "" {
 		// Remove the torrent from the debrid service

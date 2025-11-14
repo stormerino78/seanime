@@ -57,7 +57,7 @@ export function getEpisodeMinutesRemaining(history: Nullish<Continuity_WatchHist
     return Math.round((item.duration - item.currentTime) / 60)
 }
 
-export function useHandleContinuityWithMediaPlayer(playerRef: React.RefObject<MediaPlayerInstance>,
+export function useHandleContinuityWithMediaPlayer(playerRef: React.RefObject<MediaPlayerInstance | HTMLVideoElement>,
     episodeNumber: Nullish<number>,
     mediaId: Nullish<number | string>,
 ) {
@@ -66,6 +66,7 @@ export function useHandleContinuityWithMediaPlayer(playerRef: React.RefObject<Me
 
     React.useEffect(() => {
         (async () => {
+            await qc.invalidateQueries({ queryKey: [API_ENDPOINTS.CONTINUITY.GetContinuityWatchHistory.key] })
             await qc.invalidateQueries({ queryKey: [API_ENDPOINTS.CONTINUITY.GetContinuityWatchHistoryItem.key] })
         })()
     }, [episodeNumber ?? 0])

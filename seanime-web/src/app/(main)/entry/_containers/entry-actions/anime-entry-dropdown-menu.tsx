@@ -2,8 +2,10 @@
 import { Anime_Entry } from "@/api/generated/types"
 import { useOpenAnimeEntryInExplorer } from "@/api/hooks/anime_entries.hooks"
 import { useStartDefaultMediaPlayer } from "@/api/hooks/mediaplayer.hooks"
+import { useLibraryExplorer } from "@/app/(main)/_features/library-explorer/library-explorer.atoms"
 import { PluginAnimePageDropdownItems } from "@/app/(main)/_features/plugin/actions/plugin-actions"
 import { useServerStatus } from "@/app/(main)/_hooks/use-server-status"
+import { useAnimeEntryPageView } from "@/app/(main)/entry/_containers/anime-entry-page"
 import {
     __bulkDeleteFilesModalIsOpenAtom,
     AnimeEntryBulkDeleteFilesModal,
@@ -19,13 +21,13 @@ import {
 } from "@/app/(main)/entry/_containers/entry-actions/anime-entry-unmatch-files-modal"
 import { IconButton } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+import { openTab } from "@/lib/helpers/browser"
 import { useSetAtom } from "jotai"
 import React from "react"
 import { BiDotsVerticalRounded, BiFolder, BiRightArrowAlt } from "react-icons/bi"
-import { FiDownload, FiTrash } from "react-icons/fi"
-import { LuImage } from "react-icons/lu"
+import { FiArrowUpRight, FiDownload, FiTrash } from "react-icons/fi"
+import { LuFolderTree, LuGlobe, LuImage } from "react-icons/lu"
 import { MdOutlineRemoveDone } from "react-icons/md"
-import { PiVideoFill } from "react-icons/pi"
 
 export function AnimeEntryDropdownMenu({ entry }: { entry: Anime_Entry }) {
 
@@ -33,6 +35,8 @@ export function AnimeEntryDropdownMenu({ entry }: { entry: Anime_Entry }) {
     const setIsMetadataManagerOpen = useSetAtom(__metadataManager_isOpenAtom)
 
     const inLibrary = !!entry.libraryData
+
+    const { currentView, isLibraryView, isTorrentStreamingView, isDebridStreamingView, isOnlineStreamingView } = useAnimeEntryPageView()
 
     // Start default media player
     const { mutate: startDefaultMediaPlayer } = useStartDefaultMediaPlayer()
@@ -43,7 +47,7 @@ export function AnimeEntryDropdownMenu({ entry }: { entry: Anime_Entry }) {
     const setAnimeEntryUnmatchFilesModalOpen = useSetAtom(__animeEntryUnmatchFilesModalIsOpenAtom)
     const setDownloadFilesModalOpen = useSetAtom(__animeEntryDownloadFilesModalIsOpenAtom)
 
-    if (entry?.media?.status === "NOT_YET_RELEASED") return null
+    const { openDirInLibraryExplorer } = useLibraryExplorer()
 
     return (
         <>
@@ -57,20 +61,33 @@ export function AnimeEntryDropdownMenu({ entry }: { entry: Anime_Entry }) {
                 />}
             >
 
-                {inLibrary && <>
+                {(isLibraryView && inLibrary && !entry._isNakamaEntry) && <>
                     <DropdownMenuItem
                         onClick={() => openEntryInExplorer({ mediaId: entry.mediaId })}
                     >
                         <BiFolder /> Open directory
                     </DropdownMenuItem>
-
-                    {serverStatus?.settings?.mediaPlayer?.defaultPlayer != "mpv" && <DropdownMenuItem
-                        onClick={() => startDefaultMediaPlayer()}
+                    {!!entry.libraryData?.sharedPath && <DropdownMenuItem
+                        onClick={() => openDirInLibraryExplorer(entry.libraryData?.sharedPath || "")}
                     >
-                        <PiVideoFill /> Start external media player
+                        <LuFolderTree /> Open in Library Explorer
                     </DropdownMenuItem>}
-                    <DropdownMenuSeparator />
+
+                    {/*{serverStatus?.settings?.mediaPlayer?.defaultPlayer != "mpv" && <DropdownMenuItem*/}
+                    {/*    onClick={() => startDefaultMediaPlayer()}*/}
+                    {/*>*/}
+                    {/*    <PiVideoFill /> Start external media player*/}
+                    {/*</DropdownMenuItem>}*/}
+                    {/*<DropdownMenuSeparator />*/}
                 </>}
+
+                {!!entry.anidbId && <DropdownMenuItem
+                    onClick={() => openTab(`https://anidb.net/anime/${entry.anidbId}`)}
+                    className="flex justify-between items-center"
+                >
+                    <span className="flex items-center gap-2"><LuGlobe className="text-lg" /> Open on AniDB</span>
+                    <FiArrowUpRight className="text-[--muted] text-sm" />
+                </DropdownMenuItem>}
 
                 <DropdownMenuItem
                     onClick={() => setIsMetadataManagerOpen(p => !p)}
@@ -79,7 +96,7 @@ export function AnimeEntryDropdownMenu({ entry }: { entry: Anime_Entry }) {
                 </DropdownMenuItem>
 
 
-                {inLibrary && <>
+                {(isLibraryView && inLibrary && !entry._isNakamaEntry) && <>
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel>Bulk actions</DropdownMenuLabel>
                     <DropdownMenuItem

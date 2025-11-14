@@ -2,6 +2,246 @@
 
 All notable changes to this project will be documented in this file.
 
+## v3.0.3
+
+- ⚡️ Extensions: Added "notes" field to extension manifest for additional info
+- 🦺 Anime: Display download button when no default torrent provider is selected
+- 🦺 Marketplace: Fixed empty custom source lists
+- 🦺 Video Proxy: Fixed certain URIs not being rewritten
+- 🦺 Custom sources: Fixed "Resolve hidden media" 
+- 🏗️ Denshi Player: Use default or forced subtitle/audio tracks
+- 🏗️ Denshi Player: Added "off" option for subtitles
+- 🏗️ Denshi Player: Show error message when subtitle format isn't supported
+- 🏗️ Server: Updated tray icon
+
+## v3.0.2
+
+- ⚡️ Extensions: Increased custom source media ID limit
+- 🦺 Extensions: Fixed Go to JS attribute mappings
+- 🦺 Debrid streaming: Fixed single-file torrents being added to selection history
+- 🦺 Extensions: Fixed "view code" when granting permissions
+- 🦺 Denshi: Fixed youtube trailer embeds
+- 🦺 Fix: Include more formats in anime relations
+- 🦺 Scanner: Less aggressive 'Special' episode detection
+- 🦺 Transcoding: Fixed some LibASS renderer issues
+- 🏗️ Streaming: Renamed "Using previous selection" to "Auto-selecting from previous torrent"
+- 🏗️ Streaming: Automatically disable "auto-select" when it fails
+- 🏗️ Anime: Keep download button visible on all views
+- 🏗️ Fixed 32-bit builds (integer overflow)
+
+## v3.0.1
+
+- ⚡️ Home Screen: New "My Lists" and "Missed Sequels" items
+- ⚡️ Denshi Player: Add external subtitles (Experimental)
+- ⚡️ Manga: Option to overwrite all selected sources with default provider
+- 🦺 Denshi Player: Fixed subtitle & audio selection for RealDebrid
+- 🦺 Denshi: Force single instance of the client
+- 🦺 Denshi Player: Fixed some ASS subtitle signs being skipped
+- 🦺 Denshi Player: Fixed dragging/pasting subtitle files
+- 🦺 Manga: Fixed refreshing all sources
+- 🦺 Real Debrid: Fixed auto play 404 errors
+- 🦺 Denshi Player: Fixed updating number values for keybinds
+- 🦺 Denshi Player: Fixed handling of auto select errors
+- 🦺 Fixed editing entries when logged off AniList
+- 🦺 Fixed issues with default torrent provider
+- 🦺 Fix: Undo automatic trailers
+- 🦺 MPV/Iina: Don't append next episode if auto next is off
+- 🦺 Fix: Potential database locking issues
+- 🦺 Fixed some UI issues
+- 🏗️ Security(Server Passcode): Added authentication to proxy endpoints
+- 🏗️ Security: Granting plugin permissions requires two-way handshake
+- 🏗️ Security: Ability to view plugin code before granting permissions
+- 🏗️ Auto Downloader: Ability to choose all media
+- 🏗️ Extensions: Added $store API to content provider extensions
+- 🏗️ Added single instance warning to crash screen
+
+## v3.0.0
+
+- 📝 BREAKING: Seanime Desktop is now deprecated. Download the new desktop client https://seanime.app/download
+- 🎉 Seanime Denshi: New desktop client & built-in player
+  - Seanime Denshi (based on Electron) replaces Seanime Desktop (based on Tauri)
+  - New built-in player for local/torrent/debrid streaming
+  - New player supports ASS/SSA subtitles, importing subtitle files, Anime4K Upscaling
+  - PiP, Mini player, keybinds and more
+- 🎉 Custom Sources: New extension type for adding custom media
+  - Seanime now no longer limited to AniList!
+  - Add custom sources to watch/read anything you want (even non-anime series)
+  - Create and share your own custom sources
+- 🎉 Library Explorer: New way to manage your scanned library
+  - Global view of all files in your anime libraries
+  - Search, match, unmatch, edit files faster than ever before
+  - Support for renaming files (PowerRename-like) and editing metadata in bulk
+- 🎉 Playlists: New playlist system with support for all playback types (Experimental)
+  - Quickly add an episode to a playlist from the right click menu
+  - Playlists now support torrent/debrid/online streaming, transcoding and can switch between them
+  - Playlists now support external player links
+- 🎉 New cache layer for zero downtime
+  - All requests are now automatically cached to disk
+  - Seanime will keep working as usual when AniList is temporarily down
+- ⚡️ Library management improvements:
+  - Unmatched files: Integrated search & preview for faster matching
+- ⚡️ Torrent/Debrid streaming improvements:
+  - Auto play next episode now works when episode file is selected manually
+  - Files are now selected automatically based on index after the first one is selected manually
+  - Manual file selection is now easier with a redesigned interface
+- ⚡️ Plugins: Tray plugins can now be displayed as drawers
+- ⚡️ MPV/Iina: Next local file episode is automatically appended to player's playlist
+- ⚡️ Torrent client: Select files to download from batches
+- ⚡️ Online Streaming: Previous/Next button #161
+- 🦺 Offline: Fixed syncing issues where non-downloaded episodes' images were downloaded
+- 🦺 Manga: Fixed reading downloaded chapters when no provider is selected
+- 🦺 Plugin(DOM): Fixed some DOM APIs not working
+- 🏗️ BREAKING: Removed all built-in extensions
+
+## v2.9.10
+
+- ⚡️ Plugins: Added Schedule and Filler management hooks
+- 🦺 TorBox: Fixed streaming uncached torrents
+- 🦺 Nakama (Sharing): Do not share unmatched entries
+- 🦺 Nakama (Sharing): Fixed unwatched count in detailed library view
+- 🦺 Server Password: Fixed auth redirection on iOS
+- 🦺 Server: Update anime collection in modules when manually refreshing
+- 🦺 Torrent/Debrid streaming: Lowered episode list cache duration
+
+## v2.9.9
+
+- 🦺 Fixed torrent streaming for desktop players
+
+## v2.9.8
+
+- 🦺 External Player Link: Fixed torrent streaming links
+- 🦺 VLC, MPC-HC: Fixed input URI encoding
+- 🦺 M3u8 Proxy: Potential fix for missed rewrites
+- 🦺 Server Password: Do not load page before authentication
+- 🦺 Online streaming: Do not always restore fullscreen
+- 🦺 Fixed some UI bugs
+
+## v2.9.7
+
+- ⚡️ Nakama: Better default titles with MPV
+- ⚡️ External Player Links: New variables for custom scheme #345
+  - {mediaTitle}, {episodeNumber}, {formattedTitle}, {scheme}
+- 🦺 Fixed Auto Downloader not working with Debrid 
+- 🦺 Auto Play: Use same torrent when playback is started from previous selection
+- 🦺 Nakama: Fixed external player link starting playback on system player 
+- 🦺 Online streaming: Fixed m3u8 Proxy skipping some URIs #396
+- 🦺 Fixed VLC progress tracking for local file playback #398
+- 🦺 Plugin Hooks: Fixed some events being ignored 
+- 🦺 Online streaming: Invalidate all episode queries when emptying cache
+- 🏗️️ Online streaming: Display errors in the UI
+
+## v2.9.6
+
+- 🦺 Fixed server crash caused by navigating to 'Schedule' page
+
+## v2.9.5
+
+- ⚡️ Updated Discord RPC: Media title used as activity name, links
+- ⚡️ Offline mode: Option to auto save currently watched/read media locally #376
+- ⚡️ Offline mode: Bulk select media to save locally #377
+- ⚡️ Metadata: Prefer TVDB title when AniDB isn't up-to-date
+- ⚡️ Scan summaries: Search input for filenames
+- 🦺 Potential fixes for high memory usage and app slowdowns
+- 🦺 Torrent list: Fixed 'Stop seeding all' button pausing downloading torrents
+- 🦺 Playground: Fixed UI crash caused by console logs
+- 🦺 Scanner: Fixed matching being messed up by "Part" keyword in filenames
+- 🦺 Parser: Fixed folder names with single-word titles being ignored
+- 🦺 Online streaming: Don't hide button for adult entries
+- 🦺 Online streaming: Fixed wrong episode selection when page is loaded #384
+- 🦺 Potential fix for auto play not being canceled
+- 🦺 Nakama: Fixed host's list data being added to anime that aren't in the collection
+- 🦺 External Player Link: Fixed incorrect stream URL when server password is set
+- 🦺 Media player: Use filepaths for comparison when loading media instead of filenames
+- 🦺 Nakama: Fixed case sensitivity issue when comparing file paths on Windows
+- 🦺 Fixed external player links by encoding stream URL if it contains a query parameter #387
+- 🦺 Playlists: Fixed playlist deletion
+- 🏗️ Slight changes to the online streaming page for more clarity
+- 🏗️ Settings: Added memory profiling to 'logs' section
+- 🏗️ Anime: Removed (obsolete) manual TVDB metadata fetching option
+- 🏗️ Perf(Extensions): Do not download payload when checking for updates
+
+## v2.9.4
+
+- ⚡️ Migrated to Seanime's own anime metadata API
+- ⚡️ Release calendar: Watch status is now shown in popovers
+- 🦺 Fixed schedule missing some anime entries due to custom lists
+- 🦺 Watch history: Fixed resumed playback not working for local files
+- 🦺 Fixed streaming anime with no AniList schedule and no episode count
+- 🦺 Fixed 'Upload local lists to AniList' button not working
+- 🦺 Fixed repeated entries in 'Currently watching' list on the AniList page
+
+## v2.9.3
+
+- ⚡️ Plugins: Added Textarea component, 'onSelect' event for input/textarea
+- 🦺 Fixed release calendar missing long-running series
+- 🦺 Include in Library: Fixed 'repeating' entries not showing up
+
+## v2.9.2
+
+- ⚡️ Discover: Added 'Top of the Season', genre filters to more sections
+- ⚡️ Nakama: Detailed library view now available for shared library
+- ⚡️ TorBox: Optimized TorBox file list query - @MidnightKittenCat
+- ⚡️ Episode pagination: Bumped number of items per page to 24
+- 🦺 Nakama: Fixed dropdown menu not showing up for shared anime
+- 🦺 Nakama: Base unwatched count on shared episodes
+- 🦺 Scanner: Fixed modal having 'Use anilist data' checked off by default
+- 🦺 UI: Revert to modal for AniList entry editor on media cards
+- 🦺 Plugins: Allow programmatic tray opening on mobile
+- 🦺 Fixed incorrect dates in AniList entry editor #356
+- 🦺 UI: Revert incorrect video element CSS causing pixelation #355
+
+## v2.9.1
+
+- 🦺 Server Password: Fixed token validation on public endpoints
+- 🦺 Server Password: Fixed login from non-localhost, HTTP clients #350
+- ⚡️ Release calendar: Option to disable image transitions
+- ⚡️ Manga: Double page offset keybindings - @Ari-03
+- 🦺 Plugin: Fixed newMediaCardContextMenuItem and other APIs
+- 🦺 Fixed IINA settings not being applied
+- 🏗️ Downgraded Next.js and React Compiler
+  - Potential solution for client-side rendering errors #349
+
+## v2.9.0
+
+- 🎉 New feature: Nakama - Communication between Seanime instances
+  - You can now communicate with other Seanime instances over the internet
+- 🎉 Nakama: Watch together (Alpha)
+  - Watch (local media, torrent or debrid streams) together with friends with playback syncing
+  - Peers will stream from the host with synchronized playback
+- 🎉 Nakama: Share your anime library (Alpha)
+  - Share your local anime library with other Seanime instances or consume your remote library
+- ✨ Local account
+  - By default, Seanime no longer requires an AniList account and stores everything locally
+- ✨ Server password
+  - Lock your exposed Seanime instance by adding a password in your config file
+- ✨ Manga: Local source extension (Alpha)
+  - New built-in extension for reading your local manga (CBZ, ZIP, Images)
+- ✨ New schedule calendar
+- ✨ macOS: Support for IINA media player
+- ✨ Toggle offline mode without restarting the server
+- ✨ New getting started screen
+- ⚡️ Discord: Pausing anime does not remove activity anymore
+- ⚡️ UI: New setting option to unpin menu items from the sidebar
+- ⚡️ UI: Added pagination for long episode lists
+- ⚡️ Online streaming: Episode number grid view
+- ⚡️ Performance: Plugins: Deduplicate and batch events
+- ⚡️ Discord: Added option to show media title in activity status (arRPC only) - @kyoruno
+- ⚡️ PWA support (HTTPS only) - @HyperKiko
+- ⚡️ MPV/IINA: Pass custom arguments
+- ⚡️ Discord: Keep activity when anime is paused
+- ⚡️ UI: Updated some animations
+- 🦺 Fixed multiple Plugin API issues
+- 🦺 Goja: Added OpenSSL support to CryptoJS binding
+- 🦺 Fixed filecache EOF error
+- 🦺 Fixed offline syncing
+
+## v2.8.5
+
+- 🦺 Fixed scraping for manga extensions
+- 🦺 Library: Fixed bulks actions not available for unreleased anime
+- 🦺 Auto Downloader: Button not showing up for finished anime
+- 🦺 Online streaming: Fixed 'auto next episode' not working for some anime
+
 ## v2.8.4
 
 - ⚡️ Plugin development improvements

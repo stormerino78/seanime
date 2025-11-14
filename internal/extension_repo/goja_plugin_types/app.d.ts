@@ -1,259 +1,77 @@
 declare namespace $app {
 
     /**
-     * @package anilist_platform
+     * @package anilist
      */
 
     /**
-     * @event GetAnimeEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
-     */
-    function onGetAnime(cb: (event: GetAnimeEvent) => void): void;
-
-    interface GetAnimeEvent {
-        next(): void;
-
-        anime?: AL_BaseAnime;
-    }
-
-    /**
-     * @event GetAnimeDetailsEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
-     */
-    function onGetAnimeDetails(cb: (event: GetAnimeDetailsEvent) => void): void;
-
-    interface GetAnimeDetailsEvent {
-        next(): void;
-
-        anime?: AL_AnimeDetailsById_Media;
-    }
-
-    /**
-     * @event GetMangaEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
-     */
-    function onGetManga(cb: (event: GetMangaEvent) => void): void;
-
-    interface GetMangaEvent {
-        next(): void;
-
-        manga?: AL_BaseManga;
-    }
-
-    /**
-     * @event GetMangaDetailsEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
-     */
-    function onGetMangaDetails(cb: (event: GetMangaDetailsEvent) => void): void;
-
-    interface GetMangaDetailsEvent {
-        next(): void;
-
-        manga?: AL_MangaDetailsById_Media;
-    }
-
-    /**
-     * @event GetCachedAnimeCollectionEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
-     */
-    function onGetCachedAnimeCollection(cb: (event: GetCachedAnimeCollectionEvent) => void): void;
-
-    interface GetCachedAnimeCollectionEvent {
-        next(): void;
-
-        animeCollection?: AL_AnimeCollection;
-    }
-
-    /**
-     * @event GetCachedMangaCollectionEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
-     */
-    function onGetCachedMangaCollection(cb: (event: GetCachedMangaCollectionEvent) => void): void;
-
-    interface GetCachedMangaCollectionEvent {
-        next(): void;
-
-        mangaCollection?: AL_MangaCollection;
-    }
-
-    /**
-     * @event GetAnimeCollectionEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
-     */
-    function onGetAnimeCollection(cb: (event: GetAnimeCollectionEvent) => void): void;
-
-    interface GetAnimeCollectionEvent {
-        next(): void;
-
-        animeCollection?: AL_AnimeCollection;
-    }
-
-    /**
-     * @event GetMangaCollectionEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
-     */
-    function onGetMangaCollection(cb: (event: GetMangaCollectionEvent) => void): void;
-
-    interface GetMangaCollectionEvent {
-        next(): void;
-
-        mangaCollection?: AL_MangaCollection;
-    }
-
-    /**
-     * @event GetCachedRawAnimeCollectionEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
-     */
-    function onGetCachedRawAnimeCollection(cb: (event: GetCachedRawAnimeCollectionEvent) => void): void;
-
-    interface GetCachedRawAnimeCollectionEvent {
-        next(): void;
-
-        animeCollection?: AL_AnimeCollection;
-    }
-
-    /**
-     * @event GetCachedRawMangaCollectionEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
-     */
-    function onGetCachedRawMangaCollection(cb: (event: GetCachedRawMangaCollectionEvent) => void): void;
-
-    interface GetCachedRawMangaCollectionEvent {
-        next(): void;
-
-        mangaCollection?: AL_MangaCollection;
-    }
-
-    /**
-     * @event GetRawAnimeCollectionEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
-     */
-    function onGetRawAnimeCollection(cb: (event: GetRawAnimeCollectionEvent) => void): void;
-
-    interface GetRawAnimeCollectionEvent {
-        next(): void;
-
-        animeCollection?: AL_AnimeCollection;
-    }
-
-    /**
-     * @event GetRawMangaCollectionEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
-     */
-    function onGetRawMangaCollection(cb: (event: GetRawMangaCollectionEvent) => void): void;
-
-    interface GetRawMangaCollectionEvent {
-        next(): void;
-
-        mangaCollection?: AL_MangaCollection;
-    }
-
-    /**
-     * @event GetStudioDetailsEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
-     */
-    function onGetStudioDetails(cb: (event: GetStudioDetailsEvent) => void): void;
-
-    interface GetStudioDetailsEvent {
-        next(): void;
-
-        studio?: AL_StudioDetails;
-    }
-
-    /**
-     * @event PreUpdateEntryEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
+     * @event ListMissedSequelsRequestedEvent
+     * @file internal/api/anilist/hook_events.go
      * @description
-     * PreUpdateEntryEvent is triggered when an entry is about to be updated.
-     * Prevent default to skip the default update and override the update.
+     * ListMissedSequelsRequestedEvent is triggered when the list missed sequels request is requested.
+     * Prevent default to skip the default behavior and return your own data.
      */
-    function onPreUpdateEntry(cb: (event: PreUpdateEntryEvent) => void): void;
+    function onListMissedSequelsRequested(cb: (event: ListMissedSequelsRequestedEvent) => void): void;
 
-    interface PreUpdateEntryEvent {
+    interface ListMissedSequelsRequestedEvent {
         next(): void;
 
         preventDefault(): void;
 
-        mediaId?: number;
-        status?: AL_MediaListStatus;
-        scoreRaw?: number;
-        progress?: number;
-        startedAt?: AL_FuzzyDateInput;
-        completedAt?: AL_FuzzyDateInput;
+        animeCollectionWithRelations?: AL_AnimeCollectionWithRelations;
+        variables?: Record<string, any>;
+        query: string;
+        list?: Array<AL_BaseAnime>;
     }
 
     /**
-     * @event PostUpdateEntryEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
+     * @event ListMissedSequelsEvent
+     * @file internal/api/anilist/hook_events.go
      */
-    function onPostUpdateEntry(cb: (event: PostUpdateEntryEvent) => void): void;
+    function onListMissedSequels(cb: (event: ListMissedSequelsEvent) => void): void;
 
-    interface PostUpdateEntryEvent {
+    interface ListMissedSequelsEvent {
         next(): void;
 
-        mediaId?: number;
+        list?: Array<AL_BaseAnime>;
     }
 
-    /**
-     * @event PreUpdateEntryProgressEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
-     * @description
-     * PreUpdateEntryProgressEvent is triggered when an entry's progress is about to be updated.
-     * Prevent default to skip the default update and override the update.
-     */
-    function onPreUpdateEntryProgress(cb: (event: PreUpdateEntryProgressEvent) => void): void;
 
-    interface PreUpdateEntryProgressEvent {
+    /**
+     * @package animap
+     */
+
+    /**
+     * @event AnimapMediaRequestedEvent
+     * @file internal/api/animap/hook_events.go
+     * @description
+     * AnimapMediaRequestedEvent is triggered when the Animap media is requested.
+     * Prevent default to skip the default behavior and return your own data.
+     */
+    function onAnimapMediaRequested(cb: (event: AnimapMediaRequestedEvent) => void): void;
+
+    interface AnimapMediaRequestedEvent {
         next(): void;
 
         preventDefault(): void;
 
-        mediaId?: number;
-        progress?: number;
-        totalCount?: number;
-        status?: AL_MediaListStatus;
+        from: string;
+        id: number;
+        media?: Animap_Anime;
     }
 
     /**
-     * @event PostUpdateEntryProgressEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
-     */
-    function onPostUpdateEntryProgress(cb: (event: PostUpdateEntryProgressEvent) => void): void;
-
-    interface PostUpdateEntryProgressEvent {
-        next(): void;
-
-        mediaId?: number;
-    }
-
-    /**
-     * @event PreUpdateEntryRepeatEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
+     * @event AnimapMediaEvent
+     * @file internal/api/animap/hook_events.go
      * @description
-     * PreUpdateEntryRepeatEvent is triggered when an entry's repeat is about to be updated.
-     * Prevent default to skip the default update and override the update.
+     * AnimapMediaEvent is triggered after processing AnimapMedia.
      */
-    function onPreUpdateEntryRepeat(cb: (event: PreUpdateEntryRepeatEvent) => void): void;
+    function onAnimapMedia(cb: (event: AnimapMediaEvent) => void): void;
 
-    interface PreUpdateEntryRepeatEvent {
+    interface AnimapMediaEvent {
         next(): void;
 
-        preventDefault(): void;
-
-        mediaId?: number;
-        repeat?: number;
-    }
-
-    /**
-     * @event PostUpdateEntryRepeatEvent
-     * @file internal/platforms/anilist_platform/hook_events.go
-     */
-    function onPostUpdateEntryRepeat(cb: (event: PostUpdateEntryRepeatEvent) => void): void;
-
-    interface PostUpdateEntryRepeatEvent {
-        next(): void;
-
-        mediaId?: number;
+        media?: Animap_Anime;
     }
 
 
@@ -425,7 +243,7 @@ declare namespace $app {
      * @event AnimeLibraryCollectionEvent
      * @file internal/library/anime/hook_events.go
      * @description
-     * AnimeLibraryCollectionRequestedEvent is triggered when the user requests the library collection.
+     * AnimeLibraryCollectionEvent is triggered when the user requests the library collection.
      */
     function onAnimeLibraryCollection(cb: (event: AnimeLibraryCollectionEvent) => void): void;
 
@@ -463,6 +281,126 @@ declare namespace $app {
         next(): void;
 
         streamCollection?: Anime_StreamCollection;
+    }
+
+    /**
+     * @event AnimeEntryDownloadInfoRequestedEvent
+     * @file internal/library/anime/hook_events.go
+     * @description
+     * AnimeEntryDownloadInfoRequestedEvent is triggered when the app requests the download info for a media entry.
+     * This is triggered before [AnimeEntryDownloadInfoEvent].
+     */
+    function onAnimeEntryDownloadInfoRequested(cb: (event: AnimeEntryDownloadInfoRequestedEvent) => void): void;
+
+    interface AnimeEntryDownloadInfoRequestedEvent {
+        next(): void;
+
+        localFiles?: Array<Anime_LocalFile>;
+        AnimeMetadata?: Metadata_AnimeMetadata;
+        Media?: AL_BaseAnime;
+        Progress?: number;
+        Status?: AL_MediaListStatus;
+        entryDownloadInfo?: Anime_EntryDownloadInfo;
+    }
+
+    /**
+     * @event AnimeEntryDownloadInfoEvent
+     * @file internal/library/anime/hook_events.go
+     * @description
+     * AnimeEntryDownloadInfoEvent is triggered when the download info is being returned.
+     */
+    function onAnimeEntryDownloadInfo(cb: (event: AnimeEntryDownloadInfoEvent) => void): void;
+
+    interface AnimeEntryDownloadInfoEvent {
+        next(): void;
+
+        entryDownloadInfo?: Anime_EntryDownloadInfo;
+    }
+
+    /**
+     * @event AnimeEpisodeCollectionRequestedEvent
+     * @file internal/library/anime/hook_events.go
+     * @description
+     * AnimeEpisodeCollectionRequestedEvent is triggered when the episode collection is being requested.
+     * Prevent default to skip the default behavior and return your own data.
+     */
+    function onAnimeEpisodeCollectionRequested(cb: (event: AnimeEpisodeCollectionRequestedEvent) => void): void;
+
+    interface AnimeEpisodeCollectionRequestedEvent {
+        next(): void;
+
+        preventDefault(): void;
+
+        media?: AL_BaseAnime;
+        metadata?: Metadata_AnimeMetadata;
+        episodeCollection?: Anime_EpisodeCollection;
+    }
+
+    /**
+     * @event AnimeEpisodeCollectionEvent
+     * @file internal/library/anime/hook_events.go
+     * @description
+     * AnimeEpisodeCollectionEvent is triggered when the episode collection is being returned.
+     */
+    function onAnimeEpisodeCollection(cb: (event: AnimeEpisodeCollectionEvent) => void): void;
+
+    interface AnimeEpisodeCollectionEvent {
+        next(): void;
+
+        episodeCollection?: Anime_EpisodeCollection;
+    }
+
+    /**
+     * @event AnimeScheduleItemsEvent
+     * @file internal/library/anime/hook_events.go
+     * @description
+     * AnimeScheduleItemsEvent is triggered when the schedule items are being returned.
+     */
+    function onAnimeScheduleItems(cb: (event: AnimeScheduleItemsEvent) => void): void;
+
+    interface AnimeScheduleItemsEvent {
+        next(): void;
+
+        animeCollection?: AL_AnimeCollection;
+        items?: Array<Anime_ScheduleItem>;
+    }
+
+
+    /**
+     * @package anizip
+     */
+
+    /**
+     * @event AnizipMediaRequestedEvent
+     * @file internal/api/anizip/hook_events.go
+     * @description
+     * AnizipMediaRequestedEvent is triggered when the AniZip media is requested.
+     * Prevent default to skip the default behavior and return your own data.
+     */
+    function onAnizipMediaRequested(cb: (event: AnizipMediaRequestedEvent) => void): void;
+
+    interface AnizipMediaRequestedEvent {
+        next(): void;
+
+        preventDefault(): void;
+
+        from: string;
+        id: number;
+        media?: Anizip_Media;
+    }
+
+    /**
+     * @event AnizipMediaEvent
+     * @file internal/api/anizip/hook_events.go
+     * @description
+     * AnizipMediaEvent is triggered after processing AnizipMedia.
+     */
+    function onAnizipMedia(cb: (event: AnizipMediaEvent) => void): void;
+
+    interface AnizipMediaEvent {
+        next(): void;
+
+        media?: Anizip_Media;
     }
 
 
@@ -742,17 +680,28 @@ declare namespace $app {
         preventDefault(): void;
 
         animeActivity?: DiscordRPC_AnimeActivity;
+        name: string;
         details: string;
+        detailsUrl: string;
         state: string;
         startTimestamp?: number;
         endTimestamp?: number;
         largeImage: string;
         largeText: string;
+    /**
+     * URL to large image, if any
+     */
+        largeUrl?: string;
         smallImage: string;
         smallText: string;
+    /**
+     * URL to small image, if any
+     */
+        smallUrl?: string;
         buttons?: Array<DiscordRPC_Button>;
         instance: boolean;
         type: number;
+        statusDisplayType?: number;
     }
 
     /**
@@ -772,17 +721,28 @@ declare namespace $app {
         preventDefault(): void;
 
         mangaActivity?: DiscordRPC_MangaActivity;
+        name: string;
         details: string;
+        detailsUrl: string;
         state: string;
         startTimestamp?: number;
         endTimestamp?: number;
         largeImage: string;
         largeText: string;
+    /**
+     * URL to large image, if any
+     */
+        largeUrl?: string;
         smallImage: string;
         smallText: string;
+    /**
+     * URL to small image, if any
+     */
+        smallUrl?: string;
         buttons?: Array<DiscordRPC_Button>;
         instance: boolean;
         type: number;
+        statusDisplayType?: number;
     }
 
     /**
@@ -796,6 +756,64 @@ declare namespace $app {
     interface DiscordPresenceClientClosedEvent {
         next(): void;
 
+    }
+
+
+    /**
+     * @package fillermanager
+     */
+
+    /**
+     * @event HydrateFillerDataRequestedEvent
+     * @file internal/library/fillermanager/hook_events.go
+     * @description
+     * HydrateFillerDataRequestedEvent is triggered when the filler manager requests to hydrate the filler data for an entry.
+     * This is used by the local file episode list.
+     * Prevent default to skip the default behavior and return your own data.
+     */
+    function onHydrateFillerDataRequested(cb: (event: HydrateFillerDataRequestedEvent) => void): void;
+
+    interface HydrateFillerDataRequestedEvent {
+        next(): void;
+
+        preventDefault(): void;
+
+        entry?: Anime_Entry;
+    }
+
+    /**
+     * @event HydrateOnlinestreamFillerDataRequestedEvent
+     * @file internal/library/fillermanager/hook_events.go
+     * @description
+     * HydrateOnlinestreamFillerDataRequestedEvent is triggered when the filler manager requests to hydrate the filler data for online streaming
+     *     episodes. This is used by the online streaming episode list. Prevent default to skip the default behavior and return your own data.
+     */
+    function onHydrateOnlinestreamFillerDataRequested(cb: (event: HydrateOnlinestreamFillerDataRequestedEvent) => void): void;
+
+    interface HydrateOnlinestreamFillerDataRequestedEvent {
+        next(): void;
+
+        preventDefault(): void;
+
+        episodes?: Array<Onlinestream_Episode>;
+    }
+
+    /**
+     * @event HydrateEpisodeFillerDataRequestedEvent
+     * @file internal/library/fillermanager/hook_events.go
+     * @description
+     * HydrateEpisodeFillerDataRequestedEvent is triggered when the filler manager requests to hydrate the filler data for specific episodes.
+     * This is used by the torrent and debrid streaming episode list.
+     * Prevent default to skip the default behavior and return your own data.
+     */
+    function onHydrateEpisodeFillerDataRequested(cb: (event: HydrateEpisodeFillerDataRequestedEvent) => void): void;
+
+    interface HydrateEpisodeFillerDataRequestedEvent {
+        next(): void;
+
+        preventDefault(): void;
+
+        episodes?: Array<Anime_Episode>;
     }
 
 
@@ -1090,6 +1108,263 @@ declare namespace $app {
         animeEpisodeMetadata?: Metadata_EpisodeMetadata;
         episodeNumber: number;
         mediaId: number;
+    }
+
+
+    /**
+     * @package platform
+     */
+
+    /**
+     * @event GetAnimeEvent
+     * @file internal/platforms/platform/hook_events.go
+     */
+    function onGetAnime(cb: (event: GetAnimeEvent) => void): void;
+
+    interface GetAnimeEvent {
+        next(): void;
+
+        anime?: AL_BaseAnime;
+    }
+
+    /**
+     * @event GetAnimeDetailsEvent
+     * @file internal/platforms/platform/hook_events.go
+     */
+    function onGetAnimeDetails(cb: (event: GetAnimeDetailsEvent) => void): void;
+
+    interface GetAnimeDetailsEvent {
+        next(): void;
+
+        anime?: AL_AnimeDetailsById_Media;
+    }
+
+    /**
+     * @event GetMangaEvent
+     * @file internal/platforms/platform/hook_events.go
+     */
+    function onGetManga(cb: (event: GetMangaEvent) => void): void;
+
+    interface GetMangaEvent {
+        next(): void;
+
+        manga?: AL_BaseManga;
+    }
+
+    /**
+     * @event GetMangaDetailsEvent
+     * @file internal/platforms/platform/hook_events.go
+     */
+    function onGetMangaDetails(cb: (event: GetMangaDetailsEvent) => void): void;
+
+    interface GetMangaDetailsEvent {
+        next(): void;
+
+        manga?: AL_MangaDetailsById_Media;
+    }
+
+    /**
+     * @event GetCachedAnimeCollectionEvent
+     * @file internal/platforms/platform/hook_events.go
+     */
+    function onGetCachedAnimeCollection(cb: (event: GetCachedAnimeCollectionEvent) => void): void;
+
+    interface GetCachedAnimeCollectionEvent {
+        next(): void;
+
+        animeCollection?: AL_AnimeCollection;
+    }
+
+    /**
+     * @event GetCachedMangaCollectionEvent
+     * @file internal/platforms/platform/hook_events.go
+     */
+    function onGetCachedMangaCollection(cb: (event: GetCachedMangaCollectionEvent) => void): void;
+
+    interface GetCachedMangaCollectionEvent {
+        next(): void;
+
+        mangaCollection?: AL_MangaCollection;
+    }
+
+    /**
+     * @event GetAnimeCollectionEvent
+     * @file internal/platforms/platform/hook_events.go
+     */
+    function onGetAnimeCollection(cb: (event: GetAnimeCollectionEvent) => void): void;
+
+    interface GetAnimeCollectionEvent {
+        next(): void;
+
+        animeCollection?: AL_AnimeCollection;
+    }
+
+    /**
+     * @event GetMangaCollectionEvent
+     * @file internal/platforms/platform/hook_events.go
+     */
+    function onGetMangaCollection(cb: (event: GetMangaCollectionEvent) => void): void;
+
+    interface GetMangaCollectionEvent {
+        next(): void;
+
+        mangaCollection?: AL_MangaCollection;
+    }
+
+    /**
+     * @event GetCachedRawAnimeCollectionEvent
+     * @file internal/platforms/platform/hook_events.go
+     */
+    function onGetCachedRawAnimeCollection(cb: (event: GetCachedRawAnimeCollectionEvent) => void): void;
+
+    interface GetCachedRawAnimeCollectionEvent {
+        next(): void;
+
+        animeCollection?: AL_AnimeCollection;
+    }
+
+    /**
+     * @event GetCachedRawMangaCollectionEvent
+     * @file internal/platforms/platform/hook_events.go
+     */
+    function onGetCachedRawMangaCollection(cb: (event: GetCachedRawMangaCollectionEvent) => void): void;
+
+    interface GetCachedRawMangaCollectionEvent {
+        next(): void;
+
+        mangaCollection?: AL_MangaCollection;
+    }
+
+    /**
+     * @event GetRawAnimeCollectionEvent
+     * @file internal/platforms/platform/hook_events.go
+     */
+    function onGetRawAnimeCollection(cb: (event: GetRawAnimeCollectionEvent) => void): void;
+
+    interface GetRawAnimeCollectionEvent {
+        next(): void;
+
+        animeCollection?: AL_AnimeCollection;
+    }
+
+    /**
+     * @event GetRawMangaCollectionEvent
+     * @file internal/platforms/platform/hook_events.go
+     */
+    function onGetRawMangaCollection(cb: (event: GetRawMangaCollectionEvent) => void): void;
+
+    interface GetRawMangaCollectionEvent {
+        next(): void;
+
+        mangaCollection?: AL_MangaCollection;
+    }
+
+    /**
+     * @event GetStudioDetailsEvent
+     * @file internal/platforms/platform/hook_events.go
+     */
+    function onGetStudioDetails(cb: (event: GetStudioDetailsEvent) => void): void;
+
+    interface GetStudioDetailsEvent {
+        next(): void;
+
+        studio?: AL_StudioDetails;
+    }
+
+    /**
+     * @event PreUpdateEntryEvent
+     * @file internal/platforms/platform/hook_events.go
+     * @description
+     * PreUpdateEntryEvent is triggered when an entry is about to be updated.
+     * Prevent default to skip the default update and override the update.
+     */
+    function onPreUpdateEntry(cb: (event: PreUpdateEntryEvent) => void): void;
+
+    interface PreUpdateEntryEvent {
+        next(): void;
+
+        preventDefault(): void;
+
+        mediaId?: number;
+        status?: AL_MediaListStatus;
+        scoreRaw?: number;
+        progress?: number;
+        startedAt?: AL_FuzzyDateInput;
+        completedAt?: AL_FuzzyDateInput;
+    }
+
+    /**
+     * @event PostUpdateEntryEvent
+     * @file internal/platforms/platform/hook_events.go
+     */
+    function onPostUpdateEntry(cb: (event: PostUpdateEntryEvent) => void): void;
+
+    interface PostUpdateEntryEvent {
+        next(): void;
+
+        mediaId?: number;
+    }
+
+    /**
+     * @event PreUpdateEntryProgressEvent
+     * @file internal/platforms/platform/hook_events.go
+     * @description
+     * PreUpdateEntryProgressEvent is triggered when an entry's progress is about to be updated.
+     * Prevent default to skip the default update and override the update.
+     */
+    function onPreUpdateEntryProgress(cb: (event: PreUpdateEntryProgressEvent) => void): void;
+
+    interface PreUpdateEntryProgressEvent {
+        next(): void;
+
+        preventDefault(): void;
+
+        mediaId?: number;
+        progress?: number;
+        totalCount?: number;
+        status?: AL_MediaListStatus;
+    }
+
+    /**
+     * @event PostUpdateEntryProgressEvent
+     * @file internal/platforms/platform/hook_events.go
+     */
+    function onPostUpdateEntryProgress(cb: (event: PostUpdateEntryProgressEvent) => void): void;
+
+    interface PostUpdateEntryProgressEvent {
+        next(): void;
+
+        mediaId?: number;
+    }
+
+    /**
+     * @event PreUpdateEntryRepeatEvent
+     * @file internal/platforms/platform/hook_events.go
+     * @description
+     * PreUpdateEntryRepeatEvent is triggered when an entry's repeat is about to be updated.
+     * Prevent default to skip the default update and override the update.
+     */
+    function onPreUpdateEntryRepeat(cb: (event: PreUpdateEntryRepeatEvent) => void): void;
+
+    interface PreUpdateEntryRepeatEvent {
+        next(): void;
+
+        preventDefault(): void;
+
+        mediaId?: number;
+        repeat?: number;
+    }
+
+    /**
+     * @event PostUpdateEntryRepeatEvent
+     * @file internal/platforms/platform/hook_events.go
+     */
+    function onPostUpdateEntryRepeat(cb: (event: PostUpdateEntryRepeatEvent) => void): void;
+
+    interface PostUpdateEntryRepeatEvent {
+        next(): void;
+
+        mediaId?: number;
     }
 
 
@@ -2538,6 +2813,96 @@ declare namespace $app {
     }
 
     /**
+     * - Filepath: internal/api/animap/animap.go
+     */
+    interface Animap_Anime {
+        title: string;
+        titles?: Record<string, string>;
+        /**
+         * YYYY-MM-DD
+         */
+        startDate?: string;
+        /**
+         * YYYY-MM-DD
+         */
+        endDate?: string;
+        /**
+         * Finished, Airing, Upcoming, etc.
+         */
+        status: string;
+        /**
+         * TV, OVA, Movie, etc.
+         */
+        type: string;
+        /**
+         * Indexed by AniDB episode number, "1", "S1", etc.
+         */
+        episodes?: Record<string, Animap_Episode>;
+        mappings?: Animap_AnimeMapping;
+    }
+
+    /**
+     * - Filepath: internal/api/animap/animap.go
+     */
+    interface Animap_AnimeMapping {
+        anidb_id?: number;
+        anilist_id?: number;
+        kitsu_id?: number;
+        thetvdb_id?: number;
+        /**
+         * Can be int or string, forced to string
+         */
+        themoviedb_id?: string;
+        mal_id?: number;
+        livechart_id?: number;
+        /**
+         * Can be int or string, forced to string
+         */
+        animeplanet_id?: string;
+        anisearch_id?: number;
+        simkl_id?: number;
+        notifymoe_id?: string;
+        animecountdown_id?: number;
+        type?: string;
+    }
+
+    /**
+     * - Filepath: internal/api/animap/animap.go
+     */
+    interface Animap_Episode {
+        anidbEpisode: string;
+        anidbEid: number;
+        tvdbEid?: number;
+        tvdbShowId?: number;
+        /**
+         * YYYY-MM-DD
+         */
+        airDate?: string;
+        /**
+         * Title of the episode from AniDB
+         */
+        anidbTitle?: string;
+        /**
+         * Title of the episode from TVDB
+         */
+        tvdbTitle?: string;
+        overview?: string;
+        image?: string;
+        /**
+         * minutes
+         */
+        runtime?: number;
+        /**
+         * Xm
+         */
+        length?: string;
+        seasonNumber?: number;
+        seasonName?: string;
+        number: number;
+        absoluteNumber?: number;
+    }
+
+    /**
      * - Filepath: internal/library/anime/autodownloader_rule.go
      */
     interface Anime_AutoDownloaderRule {
@@ -2581,6 +2946,8 @@ declare namespace $app {
         localFiles?: Array<Anime_LocalFile>;
         anidbId: number;
         currentEpisodeCount: number;
+        _isNakamaEntry: boolean;
+        nakamaLibraryData?: Anime_NakamaEntryLibraryData;
     }
 
     /**
@@ -2671,6 +3038,16 @@ declare namespace $app {
          */
         metadataIssue?: string;
         baseAnime?: AL_BaseAnime;
+        _isNakamaEpisode: boolean;
+    }
+
+    /**
+     * - Filepath: internal/library/anime/episode_collection.go
+     */
+    interface Anime_EpisodeCollection {
+        hasMappingError: boolean;
+        episodes?: Array<Anime_Episode>;
+        metadata?: Metadata_AnimeMetadata;
     }
 
     /**
@@ -2684,6 +3061,10 @@ declare namespace $app {
         summary?: string;
         overview?: string;
         isFiller?: boolean;
+        /**
+         * Indicates if the episode has a real image
+         */
+        hasImage?: boolean;
     }
 
     /**
@@ -2713,6 +3094,10 @@ declare namespace $app {
          * Library data
          */
         libraryData?: Anime_EntryLibraryData;
+        /**
+         * Library data from Nakama
+         */
+        nakamaLibraryData?: Anime_NakamaEntryLibraryData;
         /**
          * AniList list data
          */
@@ -2805,6 +3190,14 @@ declare namespace $app {
     }
 
     /**
+     * - Filepath: internal/library/anime/entry_library_data.go
+     */
+    interface Anime_NakamaEntryLibraryData {
+        unwatchedCount: number;
+        mainFileCount: number;
+    }
+
+    /**
      * - Filepath: internal/library/anime/normalized_media.go
      */
     interface Anime_NormalizedMedia {
@@ -2834,6 +3227,20 @@ declare namespace $app {
     }
 
     /**
+     * - Filepath: internal/library/anime/schedule.go
+     */
+    interface Anime_ScheduleItem {
+        mediaId: number;
+        title: string;
+        time: string;
+        dateTime?: string;
+        image: string;
+        episodeNumber: number;
+        isMovie: boolean;
+        isSeasonFinale: boolean;
+    }
+
+    /**
      * - Filepath: internal/library/anime/collection.go
      */
     interface Anime_StreamCollection {
@@ -2857,6 +3264,55 @@ declare namespace $app {
         dir: string;
         localFiles?: Array<Anime_LocalFile>;
         suggestions?: Array<AL_BaseAnime>;
+    }
+
+    /**
+     * - Filepath: internal/api/anizip/anizip.go
+     */
+    interface Anizip_Episode {
+        tvdbEid?: number;
+        airdate?: string;
+        seasonNumber?: number;
+        episodeNumber?: number;
+        absoluteEpisodeNumber?: number;
+        title?: Record<string, string>;
+        image?: string;
+        summary?: string;
+        overview?: string;
+        runtime?: number;
+        length?: number;
+        episode?: string;
+        anidbEid?: number;
+        rating?: string;
+    }
+
+    /**
+     * - Filepath: internal/api/anizip/anizip.go
+     */
+    interface Anizip_Mappings {
+        animeplanet_id?: string;
+        kitsu_id?: number;
+        mal_id?: number;
+        type?: string;
+        anilist_id?: number;
+        anisearch_id?: number;
+        anidb_id?: number;
+        notifymoe_id?: string;
+        livechart_id?: number;
+        thetvdb_id?: number;
+        imdb_id?: string;
+        themoviedb_id?: string;
+    }
+
+    /**
+     * - Filepath: internal/api/anizip/anizip.go
+     */
+    interface Anizip_Media {
+        titles?: Record<string, string>;
+        episodes?: Record<string, Anizip_Episode>;
+        episodeCount: number;
+        specialCount: number;
+        mappings?: Anizip_Mappings;
     }
 
     /**
@@ -2992,6 +3448,7 @@ declare namespace $app {
         language?: string;
         rating?: number;
         updatedAt?: string;
+        localIsPDF?: boolean;
     }
 
     /**
@@ -3108,18 +3565,18 @@ declare namespace $app {
      * - Filepath: internal/api/metadata/types.go
      */
     interface Metadata_AnimeMappings {
-        animeplanetId: string;
-        kitsuId: number;
-        malId: number;
-        type: string;
-        anilistId: number;
-        anisearchId: number;
-        anidbId: number;
-        notifymoeId: string;
-        livechartId: number;
-        thetvdbId: number;
-        imdbId: string;
-        themoviedbId: string;
+        animeplanetId?: string;
+        kitsuId?: number;
+        malId?: number;
+        type?: string;
+        anilistId?: number;
+        anisearchId?: number;
+        anidbId?: number;
+        notifymoeId?: string;
+        livechartId?: number;
+        thetvdbId?: number;
+        imdbId?: string;
+        themoviedbId?: string;
     }
 
     /**
@@ -3150,6 +3607,10 @@ declare namespace $app {
         seasonNumber: number;
         absoluteEpisodeNumber: number;
         anidbEid: number;
+        /**
+         * Indicates if the episode has a real image
+         */
+        hasImage: boolean;
     }
 
     /**

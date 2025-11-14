@@ -20,6 +20,7 @@ const (
 	TypeAnimeTorrentProvider Type = "anime-torrent-provider"
 	TypeMangaProvider        Type = "manga-provider"
 	TypeOnlinestreamProvider Type = "onlinestream-provider"
+	TypeCustomSource         Type = "custom-source"
 	TypePlugin               Type = "plugin"
 )
 
@@ -51,6 +52,8 @@ type Extension struct {
 	Icon string `json:"icon"`
 	// Website is the URL to the extension website
 	Website string `json:"website"`
+	// Notes is an arbitrary string that can be used to show additional information about the extension (guide, changelog).
+	Notes string `json:"notes,omitempty"`
 	// ISO 639-1 language code.
 	// Set this to "multi" if the extension supports multiple languages.
 	// Defaults to "en".
@@ -87,6 +90,7 @@ type BaseExtension interface {
 	GetLanguage() Language
 	GetType() Type
 	GetDescription() string
+	GetNotes() string
 	GetAuthor() string
 	GetPayload() string
 	GetPayloadURI() string
@@ -113,6 +117,7 @@ func ToExtensionData(ext BaseExtension) *Extension {
 		Lang:            GetExtensionLang(ext.GetLang()),
 		Type:            ext.GetType(),
 		Description:     ext.GetDescription(),
+		Notes:           ext.GetNotes(),
 		Author:          ext.GetAuthor(),
 		Permissions:     ext.GetPermissions(),
 		UserConfig:      ext.GetUserConfig(),

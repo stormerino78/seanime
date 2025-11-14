@@ -1,17 +1,20 @@
 "use client"
-import { PlaylistsModal } from "@/app/(main)/(library)/_containers/playlists/playlists-modal"
 import { ScanProgressBar } from "@/app/(main)/(library)/_containers/scan-progress-bar"
 import { ScannerModal } from "@/app/(main)/(library)/_containers/scanner-modal"
 import { ErrorExplainer } from "@/app/(main)/_features/error-explainer/error-explainer"
 import { GlobalSearch } from "@/app/(main)/_features/global-search/global-search"
 import { IssueReport } from "@/app/(main)/_features/issue-report/issue-report"
+import { LibraryExplorerDrawer } from "@/app/(main)/_features/library-explorer/library-explorer-drawer"
 import { LibraryWatcher } from "@/app/(main)/_features/library-watcher/library-watcher"
 import { MediaPreviewModal } from "@/app/(main)/_features/media/_containers/media-preview-modal"
 import { MainSidebar } from "@/app/(main)/_features/navigation/main-sidebar"
+import { GlobalPlaylistManager } from "@/app/(main)/_features/playlists/_containers/global-playlist-manager"
+import { PlaylistListModal } from "@/app/(main)/_features/playlists/playlist-list-modal"
 import { PluginManager } from "@/app/(main)/_features/plugin/plugin-manager"
 import { ManualProgressTracking } from "@/app/(main)/_features/progress-tracking/manual-progress-tracking"
 import { PlaybackManagerProgressTracking } from "@/app/(main)/_features/progress-tracking/playback-manager-progress-tracking"
 import { SeaCommand } from "@/app/(main)/_features/sea-command/sea-command"
+import { VideoCoreProvider } from "@/app/(main)/_features/video-core/video-core"
 import { useAnimeCollectionLoader } from "@/app/(main)/_hooks/anilist-collection-loader"
 import { useAnimeLibraryCollectionLoader } from "@/app/(main)/_hooks/anime-library-collection-loader"
 import { useMissingEpisodesLoader } from "@/app/(main)/_hooks/missing-episodes-loader"
@@ -25,9 +28,17 @@ import { useSyncListener } from "@/app/(main)/_listeners/sync.listeners"
 import { DebridStreamOverlay } from "@/app/(main)/entry/_containers/debrid-stream/debrid-stream-overlay"
 import { TorrentStreamOverlay } from "@/app/(main)/entry/_containers/torrent-stream/torrent-stream-overlay"
 import { ChapterDownloadsDrawer } from "@/app/(main)/manga/_containers/chapter-downloads/chapter-downloads-drawer"
+import { LoadingOverlayWithLogo } from "@/components/shared/loading-overlay-with-logo"
 import { AppLayout, AppLayoutContent, AppLayoutSidebar, AppSidebarProvider } from "@/components/ui/app-layout"
+import { __isElectronDesktop__ } from "@/types/constants"
+import { usePathname, useRouter } from "next/navigation"
 import React from "react"
+import { useServerStatus } from "../../_hooks/use-server-status"
 import { useInvalidateQueriesListener } from "../../_listeners/invalidate-queries.listeners"
+import { Announcements } from "../announcements"
+import { NakamaManager } from "../nakama/nakama-manager"
+import { NativePlayer } from "../native-player/native-player"
+import { TopIndefiniteLoader } from "../top-indefinite-loader"
 
 export const MainLayout = ({ children }: { children: React.ReactNode }) => {
 
@@ -50,13 +61,39 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
     useSyncListener()
     useInvalidateQueriesListener()
 
+    const serverStatus = useServerStatus()
+    const router = useRouter()
+    const pathname = usePathname()
+
+    const [hasNavigated, setHasNavigated] = React.useState(false)
+
+    // dumb fix for duplicated player
+    const prevPathname = React.useRef(pathname)
+    React.useEffect(() => {
+        if (prevPathname.current !== pathname && pathname !== "/") {
+            setHasNavigated(true)
+        }
+        prevPathname.current = pathname
+    }, [pathname])
+
+    React.useEffect(() => {
+        if (!serverStatus?.isOffline && pathname.startsWith("/offline")) {
+            router.push("/")
+        }
+    }, [serverStatus?.isOffline, pathname])
+
+    if (serverStatus?.isOffline) {
+        return <LoadingOverlayWithLogo />
+    }
+
     return (
         <>
             <GlobalSearch />
             <ScanProgressBar />
             <LibraryWatcher />
             <ScannerModal />
-            <PlaylistsModal />
+            <PlaylistListModal />
+            <GlobalPlaylistManager />
             <ChapterDownloadsDrawer />
             <TorrentStreamOverlay />
             <DebridStreamOverlay />
@@ -67,6 +104,13 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
             <ErrorExplainer />
             <SeaCommand />
             <PluginManager />
+            {(__isElectronDesktop__) && <VideoCoreProvider>
+                <NativePlayer />
+            </VideoCoreProvider>}
+            <NakamaManager />
+            <TopIndefiniteLoader />
+            <Announcements />
+            <LibraryExplorerDrawer />
 
             <AppSidebarProvider>
                 <AppLayout withSidebar sidebarSize="slim">

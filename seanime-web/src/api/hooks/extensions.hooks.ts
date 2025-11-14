@@ -4,6 +4,7 @@ import {
     GetAllExtensions_Variables,
     GrantPluginPermissions_Variables,
     InstallExternalExtension_Variables,
+    InstallExternalExtensionRepository_Variables,
     ReloadExternalExtension_Variables,
     RunExtensionPlaygroundCode_Variables,
     SaveExtensionUserConfig_Variables,
@@ -16,20 +17,32 @@ import {
     Extension_Extension,
     ExtensionRepo_AllExtensions,
     ExtensionRepo_AnimeTorrentProviderExtensionItem,
+    ExtensionRepo_CustomSourceExtensionItem,
     ExtensionRepo_ExtensionInstallResponse,
     ExtensionRepo_ExtensionUserConfig,
     ExtensionRepo_MangaProviderExtensionItem,
     ExtensionRepo_OnlinestreamProviderExtensionItem,
+    ExtensionRepo_RepositoryInstallResponse,
     ExtensionRepo_StoredPluginSettingsData,
     ExtensionRepo_UpdateData,
     Nullish,
     RunPlaygroundCodeResponse,
 } from "@/api/generated/types"
 import { useQueryClient } from "@tanstack/react-query"
+import { atom } from "jotai"
+import { useAtom } from "jotai/react"
+import React from "react"
 import { toast } from "sonner"
 
+const unauthorizedPluginCountAtom = atom(0)
+
+export function useUnauthorizedPluginCount() {
+    const [count] = useAtom(unauthorizedPluginCountAtom)
+    return count
+}
+
 export function useGetAllExtensions(withUpdates: boolean) {
-    return useServerQuery<ExtensionRepo_AllExtensions, GetAllExtensions_Variables>({
+    const { data, ...rest } = useServerQuery<ExtensionRepo_AllExtensions, GetAllExtensions_Variables>({
         endpoint: API_ENDPOINTS.EXTENSIONS.GetAllExtensions.endpoint,
         method: API_ENDPOINTS.EXTENSIONS.GetAllExtensions.methods[0],
         queryKey: [API_ENDPOINTS.EXTENSIONS.GetAllExtensions.key, withUpdates],
@@ -39,6 +52,13 @@ export function useGetAllExtensions(withUpdates: boolean) {
         gcTime: 0,
         enabled: true,
     })
+
+    const [, setCount] = useAtom(unauthorizedPluginCountAtom)
+    React.useEffect(() => {
+        setCount((data?.invalidExtensions ?? []).filter(n => n.code === "plugin_permissions_not_granted")?.length ?? 0)
+    }, [data])
+
+    return { data, ...rest }
 }
 
 export function useFetchExternalExtensionData(id: Nullish<string>) {
@@ -59,6 +79,17 @@ export function useInstallExternalExtension() {
         mutationKey: [API_ENDPOINTS.EXTENSIONS.InstallExternalExtension.key],
         onSuccess: async () => {
             // DEVNOTE: No need to refetch, the websocket listener will do it
+        },
+    })
+}
+
+export function useInstallExternalExtensionRepository() {
+    return useServerMutation<ExtensionRepo_RepositoryInstallResponse, InstallExternalExtensionRepository_Variables>({
+        endpoint: API_ENDPOINTS.EXTENSIONS.InstallExternalExtensionRepository.endpoint,
+        method: API_ENDPOINTS.EXTENSIONS.InstallExternalExtensionRepository.methods[0],
+        mutationKey: [API_ENDPOINTS.EXTENSIONS.InstallExternalExtensionRepository.key],
+        onSuccess: async () => {
+
         },
     })
 }
@@ -130,6 +161,15 @@ export function useListOnlinestreamProviderExtensions() {
         endpoint: API_ENDPOINTS.EXTENSIONS.ListOnlinestreamProviderExtensions.endpoint,
         method: API_ENDPOINTS.EXTENSIONS.ListOnlinestreamProviderExtensions.methods[0],
         queryKey: [API_ENDPOINTS.EXTENSIONS.ListOnlinestreamProviderExtensions.key],
+        enabled: true,
+    })
+}
+
+export function useListCustomSourceExtensions() {
+    return useServerQuery<Array<ExtensionRepo_CustomSourceExtensionItem>>({
+        endpoint: API_ENDPOINTS.EXTENSIONS.ListCustomSourceExtensions.endpoint,
+        method: API_ENDPOINTS.EXTENSIONS.ListCustomSourceExtensions.methods[0],
+        queryKey: [API_ENDPOINTS.EXTENSIONS.ListCustomSourceExtensions.key],
         enabled: true,
     })
 }
@@ -227,9 +267,11 @@ export function useGrantPluginPermissions() {
         endpoint: API_ENDPOINTS.EXTENSIONS.GrantPluginPermissions.endpoint,
         method: API_ENDPOINTS.EXTENSIONS.GrantPluginPermissions.methods[0],
         mutationKey: [API_ENDPOINTS.EXTENSIONS.GrantPluginPermissions.key],
-        onSuccess: async () => {
-            toast.success("Plugin permissions granted successfully.")
-            queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.EXTENSIONS.GetPluginSettings.key] })
+        onSuccess: async (data) => {
+            if (data) {
+                toast.success("Plugin permissions granted successfully.")
+                queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.EXTENSIONS.GetPluginSettings.key] })
+            }
         },
     })
 }

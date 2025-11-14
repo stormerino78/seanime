@@ -2,10 +2,12 @@ package extension_playground
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"runtime"
 	"seanime/internal/api/anilist"
 	"seanime/internal/api/metadata"
+	"seanime/internal/api/metadata_provider"
 	"seanime/internal/extension"
 	hibikemanga "seanime/internal/extension/hibike/manga"
 	hibikeonlinestream "seanime/internal/extension/hibike/onlinestream"
@@ -32,7 +34,7 @@ type (
 		platform           platform.Platform
 		baseAnimeCache     *result.Cache[int, *anilist.BaseAnime]
 		baseMangaCache     *result.Cache[int, *anilist.BaseManga]
-		metadataProvider   metadata.Provider
+		metadataProvider   metadata_provider.Provider
 		gojaRuntimeManager *goja_runtime.Manager
 	}
 
@@ -50,7 +52,7 @@ type (
 	}
 )
 
-func NewPlaygroundRepository(logger *zerolog.Logger, platform platform.Platform, metadataProvider metadata.Provider) *PlaygroundRepository {
+func NewPlaygroundRepository(logger *zerolog.Logger, platform platform.Platform, metadataProvider metadata_provider.Provider) *PlaygroundRepository {
 	return &PlaygroundRepository{
 		logger:             logger,
 		platform:           platform,
@@ -156,7 +158,7 @@ func (r *PlaygroundRepository) getAnime(mediaId int) (anime *anilist.BaseAnime, 
 	var ok bool
 	anime, ok = r.baseAnimeCache.Get(mediaId)
 	if !ok {
-		anime, err = r.platform.GetAnime(mediaId)
+		anime, err = r.platform.GetAnime(context.Background(), mediaId)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -171,7 +173,7 @@ func (r *PlaygroundRepository) getManga(mediaId int) (manga *anilist.BaseManga, 
 	var ok bool
 	manga, ok = r.baseMangaCache.Get(mediaId)
 	if !ok {
-		manga, err = r.platform.GetManga(mediaId)
+		manga, err = r.platform.GetManga(context.Background(), mediaId)
 		if err != nil {
 			return nil, err
 		}
@@ -263,7 +265,7 @@ func (r *PlaygroundRepository) runPlaygroundCodeAnimeTorrentProvider(ext *extens
 				if animeMetadata.GetMappings() != nil {
 
 					anidbAID = animeMetadata.GetMappings().AnidbId
-					// Find Anizip Episode based on inputted episode number
+					// Find Animap Episode based on inputted episode number
 					anizipEpisode, found := animeMetadata.FindEpisode(strconv.Itoa(options.EpisodeNumber))
 					if found {
 						anidbEID = anizipEpisode.AnidbEid

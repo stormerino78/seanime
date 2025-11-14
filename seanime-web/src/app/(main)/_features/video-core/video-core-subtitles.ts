@@ -1,0 +1,408 @@
+import { getServerBaseUrl } from "@/api/client/server-url"
+import { MKVParser_SubtitleEvent, MKVParser_TrackInfo, NativePlayer_PlaybackInfo } from "@/api/generated/types"
+import { getSubtitleTrackType } from "@/app/(main)/_features/video-core/video-core-control-bar"
+import { VideoCoreSettings } from "@/app/(main)/_features/video-core/video-core.atoms"
+import { logger } from "@/lib/helpers/debug"
+import { legacy_getAssetUrl } from "@/lib/server/assets"
+import JASSUB, { ASS_Event, JassubOptions } from "jassub"
+import { toast } from "sonner"
+
+const subtitleLog = logger("SUBTITLE")
+
+const NO_TRACK_NUMBER = -1
+
+export class VideoCoreSubtitleManager {
+    private readonly videoElement: HTMLVideoElement
+    private readonly jassubOffscreenRender: boolean
+    libassRenderer: JASSUB | null = null
+    private settings: VideoCoreSettings
+    private defaultSubtitleHeader = `[Script Info]
+Title: English (US)
+ScriptType: v4.00+
+WrapStyle: 0
+PlayResX: 640
+PlayResY: 360
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default, Roboto Medium,24,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1.3,0,2,20,20,23,0
+[Events]
+
+`
+
+    private tracks: Record<string, {
+        info: MKVParser_TrackInfo
+        events: Map<string, { event: MKVParser_SubtitleEvent, assEvent: ASS_Event }>
+        styles: Record<string, number>
+    }> = {}
+
+    private playbackInfo: NativePlayer_PlaybackInfo
+    private currentTrackNumber: number = NO_TRACK_NUMBER
+    private fonts: string[] = []
+
+    private _onSelectedTrackChanged?: (track: number | null) => void
+
+    constructor({
+        videoElement,
+        jassubOffscreenRender,
+        playbackInfo,
+        settings,
+    }: {
+        videoElement: HTMLVideoElement
+        jassubOffscreenRender: boolean
+        playbackInfo: NativePlayer_PlaybackInfo
+        settings: VideoCoreSettings
+    }) {
+        this.videoElement = videoElement
+        this.jassubOffscreenRender = jassubOffscreenRender
+        this.playbackInfo = playbackInfo
+        this.settings = settings
+
+        if (!this.playbackInfo?.mkvMetadata?.subtitleTracks) return
+
+        // Store the tracks
+        for (const track of this.playbackInfo.mkvMetadata.subtitleTracks) {
+            this._addTrack(track)
+        }
+        this._storeTrackStyles() // Store their styles
+        this._selectDefaultTrack()
+
+        subtitleLog.info("Text tracks", this.videoElement.textTracks)
+        subtitleLog.info("Tracks", this.tracks)
+    }
+
+    // Selects a track by its label.
+    selectTrackByLabel(trackLabel: string) {
+        const track = this.playbackInfo.mkvMetadata?.subtitleTracks?.find?.(t => t.name === trackLabel)
+        if (track) {
+            this.selectTrack(track.number)
+        } else {
+            subtitleLog.error("Track not found", trackLabel)
+            this.setNoTrack()
+        }
+    }
+
+    registerOnSelectedTrackChanged(callback: (track: number | null) => void) {
+        this._onSelectedTrackChanged = callback
+    }
+
+    // Sets the track to no track.
+    setNoTrack() {
+        this.currentTrackNumber = NO_TRACK_NUMBER
+        this.libassRenderer?.setTrack(this.defaultSubtitleHeader)
+        this.libassRenderer?.resize?.()
+        this._onSelectedTrackChanged?.(null)
+    }
+
+    // Selects a track by its number.
+    selectTrack(trackNumber: number) {
+        subtitleLog.info("Track selection requested", trackNumber)
+        this._init()
+
+        if (this.currentTrackNumber === trackNumber) {
+            subtitleLog.info("Track already selected", trackNumber)
+            return
+        }
+
+        if (trackNumber === NO_TRACK_NUMBER) {
+            subtitleLog.info("No track selected", trackNumber)
+            this.setNoTrack()
+            return
+        }
+
+        const track = this._getTracks()?.find?.(t => t.info.number === trackNumber)
+        subtitleLog.info("Selecting track", trackNumber, track)
+
+        if (this.videoElement.textTracks) {
+            subtitleLog.info("Updating video element's textTracks", this.videoElement.textTracks)
+            for (const textTrack of this.videoElement.textTracks) {
+                if (track && textTrack.id === track.info.number.toString()) {
+                    textTrack.mode = "showing"
+                } else {
+                    textTrack.mode = "disabled"
+                }
+            }
+            this.videoElement.textTracks.dispatchEvent(new Event("change"))
+        }
+
+        if (!track) {
+            subtitleLog.info("Track not found", trackNumber)
+            this.setNoTrack()
+            return
+        }
+
+        this._onSelectedTrackChanged?.(trackNumber)
+
+        const codecPrivate = track.info.codecPrivate?.slice?.(0, -1) || this.defaultSubtitleHeader
+
+        this.currentTrackNumber = track.info.number // update the current track number
+
+        // Set the track
+        this.libassRenderer?.setTrack(codecPrivate)
+        const trackEventMap = this.tracks[track.info.number]?.events
+        if (!trackEventMap) {
+            return
+        }
+        subtitleLog.info("Found", trackEventMap.size, "events for track", track.info.number)
+
+        // Add the events to the libass renderer
+        for (const { assEvent } of trackEventMap.values()) {
+            this.libassRenderer?.createEvent(assEvent)
+        }
+
+        this.libassRenderer?.resize?.()
+    }
+
+    // This will record the events and add them to the libass renderer if they are new.
+    onSubtitleEvent(event: MKVParser_SubtitleEvent) {
+        // Record the event
+        const { isNew, assEvent } = this._recordSubtitleEvent(event)
+        // subtitleLog.info("Subtitle event received", event.trackNumber, this.currentTrackNumber)
+
+        if (!assEvent) return
+
+        // if the event is new and is from the selected track, add it to the libass renderer
+        if (this.libassRenderer && isNew && event.trackNumber === this.currentTrackNumber) {
+            // console.log("Creating event", event.text)
+            // console.table(assEvent)
+            this.libassRenderer.createEvent(assEvent)
+        }
+    }
+
+    onTrackAdded(track: MKVParser_TrackInfo) {
+        subtitleLog.info("Subtitle track added", track)
+        toast.success(`Subtitle track added: ${track.name}`)
+        this._addTrack(track)
+        this._storeTrackStyles()
+        // Add the track to the video element
+        const trackEl = document.createElement("track")
+        trackEl.id = track.number.toString()
+        trackEl.kind = "subtitles"
+        trackEl.label = track.name || ""
+        trackEl.srclang = track.language || "eng"
+        this.videoElement.appendChild(trackEl)
+        // this._selectDefaultTrack()
+        this.selectTrack(track.number)
+        this._init()
+        this.libassRenderer?.resize?.()
+    }
+
+    getTracks() {
+        return Object.values(this._getTracks()).map(t => t.info)
+    }
+
+    destroy() {
+        subtitleLog.info("Destroying subtitle manager")
+        this.libassRenderer?.destroy()
+        this.libassRenderer = null
+        for (const trackNumber in this.tracks) {
+            this.tracks[trackNumber].events.clear()
+        }
+        this.tracks = {}
+        this.currentTrackNumber = NO_TRACK_NUMBER
+    }
+
+    // ----------- Private methods ----------- //
+
+    //
+    // Selects a track to be used.
+    // This should be called after the tracks are loaded.
+    // When called for the first time, it will initialize the libass renderer.
+    isTrackSupported(trackNumber: number): boolean {
+        if (trackNumber === NO_TRACK_NUMBER) return true
+
+        const track = this.playbackInfo?.mkvMetadata?.subtitleTracks?.find(t => t.number === trackNumber)
+        if (!track) return true
+
+        return getSubtitleTrackType(track.codecID) !== "PGS"
+    }
+
+    private _addTrack(track: MKVParser_TrackInfo) {
+        this.tracks[track.number] = {
+            info: track,
+            events: new Map(),
+            styles: {},
+        }
+        return this.tracks[track.number]
+    }
+
+    private _getTracks() {
+        return Object.values(this.tracks).sort((a, b) => a.info.number - b.info.number)
+    }
+
+    getSelectedTrack(): number | null {
+        if (!this.videoElement.textTracks) return null
+
+        for (let i = 0; i < this.videoElement.textTracks.length; i++) {
+            if (this.videoElement.textTracks[i].mode === "showing") {
+                return Number(this.videoElement.textTracks[i].id)
+            }
+        }
+
+        return null
+    }
+
+    //
+    private _selectDefaultTrack() {
+        if (this.currentTrackNumber !== NO_TRACK_NUMBER) return
+        const tracks = this._getTracks()
+
+        if (!tracks?.length) {
+            this.setNoTrack()
+            return
+        }
+
+        if (tracks.length === 1) {
+            this.selectTrack(tracks[0].info.number)
+            return
+        }
+
+        // Split preferred languages by comma and trim whitespace
+        const preferredLanguages = this.settings.preferredSubtitleLanguage
+            .split(",")
+            .map(lang => lang.trim())
+            .filter(lang => lang.length > 0)
+
+        // Try each preferred language in order
+        for (const preferredLang of preferredLanguages) {
+            const foundTracks = tracks?.filter?.(t => t.info.language === preferredLang)
+            if (foundTracks?.length) {
+                // Find default or forced track
+                const defaultIndex = foundTracks.findIndex(t => t.info.forced)
+                this.selectTrack(foundTracks[defaultIndex >= 0 ? defaultIndex : 0].info.number)
+                return
+            }
+            if (preferredLang === "none") {
+                this.selectTrack(NO_TRACK_NUMBER)
+                return
+            }
+        }
+
+        // No preferred tracks found, look for default or forced tracks
+        const defaultOrForcedTracks = tracks?.filter?.(t => t.info.default || t.info.forced)
+        if (defaultOrForcedTracks?.length) {
+            // Prioritize default tracks over forced tracks
+            const defaultIndex = defaultOrForcedTracks.findIndex(t => t.info.default)
+            this.selectTrack(defaultOrForcedTracks[defaultIndex >= 0 ? defaultIndex : 0].info.number)
+            return
+        }
+
+        // No forced/default tracks found, select the first track
+        this.selectTrack(tracks?.[0]?.info?.number ?? NO_TRACK_NUMBER)
+    }
+
+    //
+    // Stores the styles for each track.
+    //
+    private _storeTrackStyles() {
+        if (!this.playbackInfo?.mkvMetadata?.subtitleTracks) return
+        for (const track of this.playbackInfo.mkvMetadata.subtitleTracks) {
+            const codecPrivate = track.codecPrivate?.slice?.(0, -1) || this.defaultSubtitleHeader
+            const lines = codecPrivate.replaceAll("\r\n", "\n").split("\n").filter(line => line.startsWith("Style:"))
+            let index = 1
+            const s: Record<string, number> = {}
+            this.tracks[track.number].styles = s // reset styles
+            for (const line of lines) {
+                let styleName = line.split("Style:")[1]
+                styleName = (styleName.split(",")[0] || "").trim()
+                if (styleName && !s[styleName]) {
+                    s[styleName] = index++
+                }
+            }
+            this.tracks[track.number].styles = s
+        }
+    }
+
+    private __eventMapKey(event: MKVParser_SubtitleEvent): string {
+        return JSON.stringify(event)
+    }
+
+    private _init() {
+        if (!!this.libassRenderer) return
+
+        subtitleLog.info("Initializing libass renderer")
+
+        const wasmUrl = new URL("/jassub/jassub-worker.wasm", window.location.origin).toString()
+        const workerUrl = new URL("/jassub/jassub-worker.js", window.location.origin).toString()
+        // const legacyWasmUrl = new URL("/jassub/jassub-worker.wasm.js", window.location.origin).toString()
+        const modernWasmUrl = new URL("/jassub/jassub-worker-modern.wasm", window.location.origin).toString()
+
+        const legacyWasmUrl = process.env.NODE_ENV === "development"
+            ? "/jassub/jassub-worker.wasm.js" : legacy_getAssetUrl("/jassub/jassub-worker.wasm.js")
+
+        const defaultFontUrl = "/jassub/Roboto-Medium.ttf"
+
+        this.libassRenderer = new JASSUB({
+            video: this.videoElement,
+            subContent: this.defaultSubtitleHeader, // needed
+            // subUrl: new URL("/jassub/test.ass", window.location.origin).toString(),
+            wasmUrl: wasmUrl,
+            workerUrl: workerUrl,
+            legacyWasmUrl: legacyWasmUrl,
+            modernWasmUrl: modernWasmUrl,
+            // Both parameters needed for subs to work on iOS, ref: jellyfin-vue
+            // offscreenRender: isApple() ? false : this.jassubOffscreenRender, // should be false for iOS
+            offscreenRender: true,
+            // onDemandRender: false,
+            // prescaleFactor: 0.8,
+            fonts: this.fonts,
+            fallbackFont: "roboto medium",
+            availableFonts: {
+                "roboto medium": defaultFontUrl,
+            },
+            libassGlyphLimit: 60500,
+            libassMemoryLimit: 1024,
+            dropAllBlur: true,
+        })
+
+        this.fonts = this.playbackInfo.mkvMetadata?.attachments?.filter(a => a.type === "font")
+            ?.map(a => `${getServerBaseUrl()}/api/v1/directstream/att/${a.filename}`) || []
+
+        this.fonts = [defaultFontUrl, ...this.fonts]
+
+        for (const font of this.fonts) {
+            this.libassRenderer.addFont(font)
+        }
+    }
+
+    private _createAssEvent(event: MKVParser_SubtitleEvent, index: number): ASS_Event {
+        return {
+            Start: event.startTime,
+            Duration: event.duration,
+            Style: String(event.extraData?.style ? this.tracks[event.trackNumber]?.styles?.[event.extraData?.style ?? "Default"] : 1),
+            Name: event.extraData?.name ?? "",
+            MarginL: event.extraData?.marginL ? Number(event.extraData.marginL) : 0,
+            MarginR: event.extraData?.marginR ? Number(event.extraData.marginR) : 0,
+            MarginV: event.extraData?.marginV ? Number(event.extraData.marginV) : 0,
+            Effect: event.extraData?.effect ?? "",
+            Text: event.text,
+            ReadOrder: event.extraData?.readOrder ? Number(event.extraData.readOrder) : 1,
+            Layer: event.extraData?.layer ? Number(event.extraData.layer) : 0,
+            // index is based on the order of the events in the record
+            _index: index,
+        }
+    }
+
+
+    private _recordSubtitleEvent(event: MKVParser_SubtitleEvent): { isNew: boolean, assEvent: ASS_Event | null } {
+        const trackEventMap = this.tracks[event.trackNumber]?.events // get the map
+        if (!trackEventMap) {
+            return { isNew: false, assEvent: null }
+        }
+
+        const eventKey = this.__eventMapKey(event)
+
+        // Check if the event is already in the record
+        // If it is, return false
+        if (trackEventMap.has(eventKey)) {
+            return { isNew: false, assEvent: trackEventMap.get(eventKey)?.assEvent! }
+        }
+
+        // record the event
+        const assEvent = this._createAssEvent(event, trackEventMap.size)
+        trackEventMap.set(eventKey, { event, assEvent })
+        return { isNew: true, assEvent }
+    }
+}
+
