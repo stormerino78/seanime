@@ -6,6 +6,7 @@ import (
 	"os"
 	"seanime/internal/events"
 	"seanime/internal/extension"
+	hibikecustomsource "seanime/internal/extension/hibike/customsource"
 	hibikemanga "seanime/internal/extension/hibike/manga"
 	hibiketorrent "seanime/internal/extension/hibike/torrent"
 	"seanime/internal/goja/goja_runtime"
@@ -95,6 +96,14 @@ type (
 		Name     string                              `json:"name"`
 		Lang     string                              `json:"lang"` // ISO 639-1 language code
 		Settings hibiketorrent.AnimeProviderSettings `json:"settings"`
+	}
+
+	CustomSourceExtensionItem struct {
+		ID                  string                      `json:"id"`
+		ExtensionIdentifier int                         `json:"extensionIdentifier"`
+		Name                string                      `json:"name"`
+		Lang                string                      `json:"lang"` // ISO 639-1 language code
+		Settings            hibikecustomsource.Settings `json:"settings"`
 	}
 )
 
@@ -226,9 +235,37 @@ func (r *Repository) ListInvalidExtensions() (ret []*extension.InvalidExtension)
 func (r *Repository) GetExtensionPayload(id string) (ret string) {
 	ext, found := r.extensionBank.Get(id)
 	if !found {
+		ie, found := r.invalidExtensions.Get(id)
+		if found {
+			ext := ie.Extension
+			ret = ext.Payload
+			if len(ret) > 0 {
+				return
+			}
+
+			// Fetch from payload URI
+			if ext.IsDevelopment {
+				return
+			}
+
+			ret, _ = r.downloadPayload(ext.PayloadURI)
+		}
 		return ""
 	}
-	return ext.GetPayload()
+
+	ret = ext.GetPayload()
+	if len(ret) > 0 {
+		return
+	}
+
+	// Fetch from payload URI
+	if ext.GetPayloadURI() == "" || ext.GetIsDevelopment() {
+		return
+	}
+
+	ret, _ = r.downloadPayload(ext.GetPayloadURI())
+
+	return
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -277,17 +314,29 @@ func (r *Repository) ListAnimeTorrentProviderExtensions() []*AnimeTorrentProvide
 	extension.RangeExtensions(r.extensionBank, func(key string, ext extension.AnimeTorrentProviderExtension) bool {
 		settings := ext.GetProvider().GetSettings()
 		ret = append(ret, &AnimeTorrentProviderExtensionItem{
-			ID:   ext.GetID(),
-			Name: ext.GetName(),
-			Lang: extension.GetExtensionLang(ext.GetLang()),
-			Settings: hibiketorrent.AnimeProviderSettings{
-				Type:           settings.Type,
-				CanSmartSearch: settings.CanSmartSearch,
-				SupportsAdult:  settings.SupportsAdult,
-				SmartSearchFilters: lo.Map(settings.SmartSearchFilters, func(value hibiketorrent.AnimeProviderSmartSearchFilter, _ int) hibiketorrent.AnimeProviderSmartSearchFilter {
-					return value
-				}),
-			},
+			ID:       ext.GetID(),
+			Name:     ext.GetName(),
+			Lang:     extension.GetExtensionLang(ext.GetLang()),
+			Settings: settings,
+		})
+
+		return true
+	})
+
+	return ret
+}
+
+func (r *Repository) ListCustomSourceExtensions() []*CustomSourceExtensionItem {
+	ret := make([]*CustomSourceExtensionItem, 0)
+
+	extension.RangeExtensions(r.extensionBank, func(key string, ext extension.CustomSourceExtension) bool {
+		settings := ext.GetProvider().GetSettings()
+		ret = append(ret, &CustomSourceExtensionItem{
+			ID:                  ext.GetID(),
+			ExtensionIdentifier: ext.GetExtensionIdentifier(),
+			Name:                ext.GetName(),
+			Lang:                extension.GetExtensionLang(ext.GetLang()),
+			Settings:            settings,
 		})
 
 		return true
@@ -326,6 +375,11 @@ func (r *Repository) GetOnlinestreamProviderExtensionByID(id string) (extension.
 
 func (r *Repository) GetAnimeTorrentProviderExtensionByID(id string) (extension.AnimeTorrentProviderExtension, bool) {
 	ext, found := extension.GetExtension[extension.AnimeTorrentProviderExtension](r.extensionBank, id)
+	return ext, found
+}
+
+func (r *Repository) GetCustomSourceExtensionByID(id string) (extension.CustomSourceExtension, bool) {
+	ext, found := extension.GetExtension[extension.CustomSourceExtension](r.extensionBank, id)
 	return ext, found
 }
 

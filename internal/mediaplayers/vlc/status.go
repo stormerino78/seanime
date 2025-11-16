@@ -2,11 +2,12 @@ package vlc
 
 import (
 	"errors"
-	"github.com/goccy/go-json"
 	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/goccy/go-json"
 )
 
 // Status contains information related to the VLC instance status. Use parseStatus to parse the response from a
@@ -195,6 +196,15 @@ func (vlc *VLC) ToggleFullscreen() (err error) {
 	return
 }
 
+func escapeInput(input string) string {
+	if strings.HasPrefix(input, "http") {
+		return url.QueryEscape(input)
+	} else {
+		input = filepath.FromSlash(input)
+		return strings.ReplaceAll(url.QueryEscape(input), "+", "%20")
+	}
+}
+
 // AddAndPlay adds a URI to the playlist and starts playback.
 // The option field is optional and can have the values: noaudio, novideo
 func (vlc *VLC) AddAndPlay(uri string, option ...string) error {
@@ -202,10 +212,7 @@ func (vlc *VLC) AddAndPlay(uri string, option ...string) error {
 	if len(option) > 1 {
 		return errors.New("please provide only one option")
 	}
-	urlSegment := "/requests/status.json?command=in_play&input=" + url.PathEscape(filepath.FromSlash(uri))
-	if strings.HasPrefix(uri, "http") {
-		urlSegment = "/requests/status.json?command=in_play&input=" + url.PathEscape(uri)
-	}
+	urlSegment := "/requests/status.json?command=in_play&input=" + escapeInput(uri)
 	if len(option) == 1 {
 		if (option[0] != "noaudio") && (option[0] != "novideo") {
 			return errors.New("invalid option")
@@ -218,13 +225,13 @@ func (vlc *VLC) AddAndPlay(uri string, option ...string) error {
 
 // Add adds a URI to the playlist
 func (vlc *VLC) Add(uri string) (err error) {
-	_, err = vlc.RequestMaker("/requests/status.json?command=in_enqueue&input=" + url.PathEscape(uri))
+	_, err = vlc.RequestMaker("/requests/status.json?command=in_enqueue&input=" + escapeInput(uri))
 	return
 }
 
 // AddSubtitle adds a subtitle from URI to currently playing file
 func (vlc *VLC) AddSubtitle(uri string) (err error) {
-	_, err = vlc.RequestMaker("/requests/status.json?command=addsubtitle&val=" + url.PathEscape(uri))
+	_, err = vlc.RequestMaker("/requests/status.json?command=addsubtitle&val=" + escapeInput(uri))
 	return
 }
 
@@ -301,7 +308,7 @@ func (vlc *VLC) Volume(val string) (err error) {
 	return
 }
 
-// Seek seeks to <val>
+// SeekTo seeks to <val>
 //
 //	Allowed values are of the form:
 //	  [+ or -][<int><H or h>:][<int><M or m or '>:][<int><nothing or S or s or ">]
@@ -311,7 +318,7 @@ func (vlc *VLC) Volume(val string) (err error) {
 //	  1000 -> seek to the 1000th second
 //	  +1H:2M -> seek 1 hour and 2 minutes forward
 //	  -10% -> seek 10% back
-func (vlc *VLC) Seek(val string) (err error) {
+func (vlc *VLC) SeekTo(val string) (err error) {
 	_, err = vlc.RequestMaker("/requests/status.json?command=seek&val=" + val)
 	return
 }

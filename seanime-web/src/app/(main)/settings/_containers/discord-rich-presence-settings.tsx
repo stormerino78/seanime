@@ -51,12 +51,12 @@ export function DiscordRichPresenceSettings(props: DiscordRichPresenceSettingsPr
                     label="Hide Seanime Repository Button"
                 />
 
-                <Field.Switch
-                    side="right"
-                    name="richPresenceShowAniListMediaButton"
-                    label="Show AniList Media Button"
-                    help="Show a button to open the media page on AniList."
-                />
+                {/*<Field.Switch*/}
+                {/*    side="right"*/}
+                {/*    name="richPresenceShowAniListMediaButton"*/}
+                {/*    label="Show AniList Media Button"*/}
+                {/*    help="Show a button to open the media page on AniList."*/}
+                {/*/>*/}
 
                 <Field.Switch
                     side="right"
@@ -64,6 +64,14 @@ export function DiscordRichPresenceSettings(props: DiscordRichPresenceSettingsPr
                     label="Show AniList Profile Button"
                     help="Show a button to open your profile page on AniList."
                 />
+
+                {/*<Field.Switch*/}
+                {/*    side="right"*/}
+                {/*    name="richPresenceUseMediaTitleStatus"*/}
+                {/*    label={<span className="flex gap-2 items-center">Use Media Title as Status <LuTriangleAlert className="text-[--orange]" /></span>}*/}
+                {/*    moreHelp="Does not work with the default Discord Desktop Client."*/}
+                {/*    help="Replace 'Seanime' with the media title in the activity status. Only works if you use a discord client that utilizes arRPC."*/}
+                {/*/>*/}
             </SettingsCard>
         </>
     )

@@ -32,6 +32,7 @@ func (c *ComponentManager) jsDiv(call goja.FunctionCall) goja.Value {
 	return defineComponent(c.ctx.vm, call, "div", []ComponentProp{
 		{Name: "items", Type: "array", Required: false, OptionalFirstArg: true},
 		{Name: "style", Type: "object", Required: false, Validate: validateType("object")},
+		{Name: "onClick", Type: "string", Required: false, Validate: validateType("string")},
 		{Name: "className", Type: "string", Required: false, Validate: validateType("string")},
 	})
 }
@@ -106,6 +107,23 @@ func (c *ComponentManager) jsButton(call goja.FunctionCall) goja.Value {
 	})
 }
 
+// jsAnchor
+//
+//	Example:
+//	const anchor = tray.anchor("Click here", { href: "https://example.com" })
+//	// or
+//	const anchor = tray.anchor({ text: "Click here", href: "https://example.com" })
+func (c *ComponentManager) jsAnchor(call goja.FunctionCall) goja.Value {
+	return defineComponent(c.ctx.vm, call, "anchor", []ComponentProp{
+		{Name: "text", Type: "string", Required: true, OptionalFirstArg: true, Validate: validateType("string")},
+		{Name: "href", Type: "string", Required: true, Validate: validateType("string")},
+		{Name: "target", Type: "string", Required: false, Default: "_blank", Validate: validateType("string")},
+		{Name: "onClick", Type: "string", Required: false, Validate: validateType("string")},
+		{Name: "style", Type: "object", Required: false, Validate: validateType("object")},
+		{Name: "className", Type: "string", Required: false, Validate: validateType("string")},
+	})
+}
+
 ////////////////////////////////////////////
 // Fields
 ////////////////////////////////////////////
@@ -126,9 +144,11 @@ func (c *ComponentManager) jsInput(call goja.FunctionCall) goja.Value {
 		{Name: "placeholder", Type: "string", Required: false, Validate: validateType("string")},
 		{Name: "value", Type: "string", Required: false, Default: "", Validate: validateType("string")},
 		{Name: "onChange", Type: "string", Required: false, Validate: validateType("string")},
+		{Name: "onSelect", Type: "string", Required: false, Validate: validateType("string")},
 		{Name: "fieldRef", Type: "object", Required: false, Validate: validateType("object")},
 		{Name: "style", Type: "object", Required: false, Validate: validateType("object")},
 		{Name: "disabled", Type: "boolean", Required: false, Default: false, Validate: validateType("boolean")},
+		{Name: "textarea", Type: "boolean", Required: false, Default: false, Validate: validateType("boolean")},
 		{Name: "size", Type: "string", Required: false, Validate: validateType("string")},
 		{Name: "className", Type: "string", Required: false, Validate: validateType("string")},
 	})

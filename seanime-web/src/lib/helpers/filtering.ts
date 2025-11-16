@@ -36,9 +36,9 @@ type CollectionSorting<T extends CollectionType> = BaseCollectionSorting | (T ex
     | "AIRDATE"
     | "AIRDATE_DESC"
     : T extends "manga" ?
-    "PROGRESS"
-    | "PROGRESS_DESC"
-    : never)
+        "PROGRESS"
+        | "PROGRESS_DESC"
+        : never)
 
 
 type ContinueWatchingSorting =
@@ -219,9 +219,11 @@ export function filterListEntries<T extends AL_MangaCollection_MediaListCollecti
 
     // Sort by title
     if (getParamValue(params.sorting) === "TITLE")
-        arr = sortBy(arr, n => n?.media?.title?.userPreferred)
+        // arr = sortBy(arr, n => n?.media?.title?.userPreferred)
+        arr.sort((a, b) => a?.media?.title?.userPreferred?.localeCompare(b?.media?.title?.userPreferred!) || 0)
     if (getParamValue(params.sorting) === "TITLE_DESC")
-        arr = sortBy(arr, n => n?.media?.title?.userPreferred).reverse()
+        // arr = sortBy(arr, n => n?.media?.title?.userPreferred).reverse()
+        arr.sort((a, b) => b?.media?.title?.userPreferred?.localeCompare(a?.media?.title?.userPreferred!) || 0).reverse()
 
     // Sort by release date
     if (getParamValue(params.sorting) === "RELEASE_DATE" || getParamValue(params.sorting) === "RELEASE_DATE_DESC") {
@@ -304,9 +306,11 @@ export function filterCollectionEntries<T extends Anime_LibraryCollectionEntry[]
 
     // Sort by title
     if (getParamValue(params.sorting) === "TITLE")
-        arr = sortBy(arr, n => n?.media?.title?.userPreferred)
+        // arr = sortBy(arr, n => n?.media?.title?.userPreferred)
+        arr.sort((a, b) => a?.media?.title?.userPreferred?.localeCompare(b?.media?.title?.userPreferred!) || 0)
     if (getParamValue(params.sorting) === "TITLE_DESC")
-        arr = sortBy(arr, n => n?.media?.title?.userPreferred).reverse()
+        // arr = sortBy(arr, n => n?.media?.title?.userPreferred).reverse()
+        arr.sort((a, b) => b?.media?.title?.userPreferred?.localeCompare(a?.media?.title?.userPreferred!) || 0).reverse()
 
     // Sort by release date
     if (getParamValue(params.sorting) === "RELEASE_DATE" || getParamValue(params.sorting) === "RELEASE_DATE_DESC") {
@@ -379,12 +383,25 @@ export function filterAnimeCollectionEntries<T extends Anime_LibraryCollectionEn
 
     // Sort by unwatched episodes
     if (getParamValue(params.sorting) === "UNWATCHED_EPISODES") {
+        // arr = sortBy(arr,
+        //     n => !!n.libraryData?.mainFileCount ? n.libraryData?.unwatchedCount : (anilist_getUnwatchedCount(n.media, n.listData?.progress) ||
+        // 99999))
         arr = sortBy(arr,
-            n => !!n.libraryData?.mainFileCount ? n.libraryData?.unwatchedCount : (anilist_getUnwatchedCount(n.media, n.listData?.progress) || 99999))
+            n => !!n.libraryData?.mainFileCount ? n.libraryData?.unwatchedCount : (
+                !!n.nakamaLibraryData?.mainFileCount ? n.nakamaLibraryData?.unwatchedCount : (anilist_getUnwatchedCount(n.media,
+                    n.listData?.progress) || 99999)
+            ))
     }
     if (getParamValue(params.sorting) === "UNWATCHED_EPISODES_DESC") {
+        // arr = sortBy(arr,
+        //     n => !!n.libraryData?.mainFileCount ? n.libraryData?.unwatchedCount : anilist_getUnwatchedCount(n.media,
+        // n.listData?.progress)).reverse()
         arr = sortBy(arr,
-            n => !!n.libraryData?.mainFileCount ? n.libraryData?.unwatchedCount : anilist_getUnwatchedCount(n.media, n.listData?.progress)).reverse()
+            n => !!n.libraryData?.mainFileCount ? n.libraryData?.unwatchedCount : (
+                !!n.nakamaLibraryData?.mainFileCount ? n.nakamaLibraryData?.unwatchedCount : (anilist_getUnwatchedCount(n.media,
+                    n.listData?.progress) || 99999)
+            ))
+            .reverse()
     }
 
     // Sort by last watched
@@ -494,8 +511,8 @@ export function sortContinueWatchingEntries(
     if (sorting === "LAST_WATCHED")
         arr = sortBy(arr, n => watchHistory?.[n.baseAnime?.id!]?.timeUpdated || new Date(9999, 1, 1).toISOString())
     if (sorting === "LAST_WATCHED_DESC")
-    arr = sortBy(arr, n => watchHistory?.[n.baseAnime?.id!]?.timeUpdated || new Date(1000, 1, 1).toISOString())
-        .reverse()
+        arr = sortBy(arr, n => watchHistory?.[n.baseAnime?.id!]?.timeUpdated || new Date(1000, 1, 1).toISOString())
+            .reverse()
 
     return arr
 }

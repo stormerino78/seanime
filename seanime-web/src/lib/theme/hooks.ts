@@ -1,5 +1,7 @@
 import { Models_Theme } from "@/api/generated/types"
 import { useServerStatus } from "@/app/(main)/_hooks/use-server-status"
+import React from "react"
+import { useWindowSize } from "react-use"
 
 export const enum ThemeLibraryScreenBannerType {
     Dynamic = "dynamic",
@@ -21,10 +23,10 @@ export const ThemeMediaPageBannerTypeOptions = [
         value: ThemeMediaPageBannerType.Default as string, label: "Default",
         description: "Always show a banner image. If not available, the cover image will be used instead.",
     },
-    // {
-    //     value: ThemeMediaPageBannerType.BlurWhenUnavailable as string, label: "Blur when unavailable",
-    //     description: "Show the banner image if available. If not available, the cover image will be used and blurred.",
-    // },
+    {
+        value: ThemeMediaPageBannerType.BlurWhenUnavailable as string, label: "Blur when unavailable",
+        description: "Show the banner image if available. If not available, the cover image will be used and blurred.",
+    },
     {
         value: ThemeMediaPageBannerType.DimWhenUnavailable as string, label: "Dim if unavailable",
         description: "Show the banner image if available. If not available, the banner will be dimmed.",
@@ -116,8 +118,8 @@ export const THEME_DEFAULT_VALUES: ThemeSettings = {
     hideDownloadedEpisodeCardFilename: false,
     customCSS: "",
     mobileCustomCSS: "",
+    unpinnedMenuItems: [],
 }
-
 
 export type ThemeSettingsHook = {
     hasCustomBackgroundColor: boolean
@@ -154,7 +156,8 @@ export function useThemeSettings(): ThemeSettingsHook {
         hasCustomBackgroundColor: !!serverStatus?.themeSettings?.backgroundColor && serverStatus?.themeSettings?.backgroundColor !== THEME_DEFAULT_VALUES.backgroundColor,
         mediaPageBannerType: getThemeValue("mediaPageBannerType", serverStatus?.themeSettings),
         mediaPageBannerSize: getThemeValue("mediaPageBannerSize", serverStatus?.themeSettings),
-        mediaPageBannerInfoBoxSize: getThemeValue("mediaPageBannerInfoBoxSize", serverStatus?.themeSettings),
+        mediaPageBannerInfoBoxSize: "fluid",
+        // mediaPageBannerInfoBoxSize: getThemeValue("mediaPageBannerInfoBoxSize", serverStatus?.themeSettings),
         showEpisodeCardAnimeInfo: getThemeValue("showEpisodeCardAnimeInfo", serverStatus?.themeSettings),
         continueWatchingDefaultSorting: getThemeValue("continueWatchingDefaultSorting", serverStatus?.themeSettings),
         animeLibraryCollectionDefaultSorting: getThemeValue("animeLibraryCollectionDefaultSorting", serverStatus?.themeSettings),
@@ -165,29 +168,83 @@ export function useThemeSettings(): ThemeSettingsHook {
         hideDownloadedEpisodeCardFilename: getThemeValue("hideDownloadedEpisodeCardFilename", serverStatus?.themeSettings),
         customCSS: getThemeValue("customCSS", serverStatus?.themeSettings),
         mobileCustomCSS: getThemeValue("mobileCustomCSS", serverStatus?.themeSettings),
+        unpinnedMenuItems: getThemeValue("unpinnedMenuItems", serverStatus?.themeSettings)
+            ?.filter((n: string) => n !== "anilist" && n !== "nakama" && n !== "library"),
     }
 }
 
 function getThemeValue(key: string, settings: ThemeSettings | undefined | null): any {
+    // @ts-ignore
+    const defaultValue = THEME_DEFAULT_VALUES[key]
+
     if (!settings) {
-        // @ts-ignore
-        return THEME_DEFAULT_VALUES[key]
+        return defaultValue
     }
 
+    // Special case for mediaPageBannerInfoBoxSize
     if (key === "mediaPageBannerInfoBoxSize") {
         if (settings?.mediaPageBannerInfoBoxSize !== "boxed") {
-            return THEME_DEFAULT_VALUES[key]
+            return defaultValue
         }
     }
 
     const val = (settings as any)[key]
-    if (typeof val === "string" && val === "") {
-        // @ts-ignore
-        return THEME_DEFAULT_VALUES[key]
-    } else if (typeof val === "number" && val === 0) {
-        // @ts-ignore
-        return THEME_DEFAULT_VALUES[key]
-    } else {
-        return val
+    const defaultType = typeof defaultValue
+    const valType = typeof val
+
+    // Handle different types based on the default value's type
+    if (val === null || val === undefined) {
+        return defaultValue
     }
+
+    switch (defaultType) {
+        case "string":
+            // For strings: only use default if current value is empty string and default is not empty
+            if (valType === "string" && val === "" && defaultValue !== "") {
+                return defaultValue
+            }
+            // If types don't match, use default
+            if (valType !== "string") {
+                return defaultValue
+            }
+            return val
+
+        case "number":
+            // For numbers: use default if not a valid number
+            if (valType !== "number" || isNaN(val)) {
+                return defaultValue
+            }
+            return val
+
+        case "boolean":
+            // For booleans: use actual value if it's a boolean, otherwise use default
+            if (valType === "boolean") {
+                return val
+            }
+            return defaultValue
+
+        case "object":
+            if (Array.isArray(defaultValue)) {
+                // For arrays: use default if not an array
+                if (!Array.isArray(val)) {
+                    return defaultValue
+                }
+                return val
+            } else {
+                // For objects: use default if not an object
+                if (valType !== "object" || val === null) {
+                    return defaultValue
+                }
+                return val
+            }
+
+        default:
+            // For any other type, return the value
+            return val
+    }
+}
+
+export function useIsMobile(): { isMobile: boolean } {
+    const { width } = useWindowSize()
+    return { isMobile: React.useMemo(() => width < 1024, [width < 1024]) }
 }

@@ -53,6 +53,7 @@ export function useRefreshAnimeCollection() {
             await queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.MANGA.GetMangaCollection.key] })
             await queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.ANIME_ENTRIES.GetAnimeEntry.key] })
             await queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.MANGA.GetMangaEntry.key] })
+            await queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.ANIME_COLLECTION.GetAnimeCollectionSchedule.key] })
         },
     })
 }
@@ -142,12 +143,12 @@ export function useGetAnilistStudioDetails(id: number) {
     })
 }
 
-export function useGetAniListStats() {
+export function useGetAniListStats(enabled: boolean = true) {
     return useServerQuery<AL_Stats>({
         endpoint: API_ENDPOINTS.ANILIST.GetAniListStats.endpoint,
         method: API_ENDPOINTS.ANILIST.GetAniListStats.methods[0],
         queryKey: [API_ENDPOINTS.ANILIST.GetAniListStats.key],
-        enabled: true,
+        enabled: enabled,
     })
 }
 
@@ -157,5 +158,27 @@ export function useAnilistListMissedSequels(enabled: boolean) {
         method: API_ENDPOINTS.ANILIST.AnilistListMissedSequels.methods[0],
         queryKey: [API_ENDPOINTS.ANILIST.AnilistListMissedSequels.key],
         enabled: enabled,
+    })
+}
+
+export function useGetAnilistCacheLayerStatus() {
+    return useServerQuery<boolean>({
+        endpoint: API_ENDPOINTS.ANILIST.GetAnilistCacheLayerStatus.endpoint,
+        method: API_ENDPOINTS.ANILIST.GetAnilistCacheLayerStatus.methods[0],
+        queryKey: [API_ENDPOINTS.ANILIST.GetAnilistCacheLayerStatus.key],
+        gcTime: 0,
+        enabled: true,
+    })
+}
+
+export function useToggleAnilistCacheLayerStatus() {
+    const queryClient = useQueryClient()
+    return useServerMutation<boolean>({
+        endpoint: API_ENDPOINTS.ANILIST.ToggleAnilistCacheLayerStatus.endpoint,
+        method: API_ENDPOINTS.ANILIST.ToggleAnilistCacheLayerStatus.methods[0],
+        mutationKey: [API_ENDPOINTS.ANILIST.ToggleAnilistCacheLayerStatus.key],
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.ANILIST.GetAnilistCacheLayerStatus.key] })
+        },
     })
 }

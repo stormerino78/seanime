@@ -288,7 +288,7 @@ func (a *AppContextImpl) BindFillerManagerToContextObj(vm *goja.Runtime, obj *go
 func (a *AppContextImpl) BindAutoDownloaderToContextObj(vm *goja.Runtime, obj *goja.Object, logger *zerolog.Logger, ext *extension.Extension, scheduler *goja_util.Scheduler) {
 
 	autoDownloaderObj := vm.NewObject()
-	_ = autoDownloaderObj.Set("refreshQueue", func() goja.Value {
+	_ = autoDownloaderObj.Set("run", func() goja.Value {
 		autoDownloader, ok := a.autoDownloader.Get()
 		if !ok {
 			goja_bindings.PanicThrowErrorString(vm, "autoDownloader not set")
@@ -324,7 +324,7 @@ func (a *AppContextImpl) BindFileCacherToContextObj(vm *goja.Runtime, obj *goja.
 func (a *AppContextImpl) BindExternalPlayerLinkToContextObj(vm *goja.Runtime, obj *goja.Object, logger *zerolog.Logger, ext *extension.Extension, scheduler *goja_util.Scheduler) {
 
 	externalPlayerLinkObj := vm.NewObject()
-	_ = externalPlayerLinkObj.Set("open", func(url string, mediaId int, episodeNumber int) goja.Value {
+	_ = externalPlayerLinkObj.Set("open", func(url string, mediaId int, episodeNumber int, mediaTitle string) goja.Value {
 		wsEventManager, ok := a.wsEventManager.Get()
 		if !ok {
 			goja_bindings.PanicThrowErrorString(vm, "wsEventManager not set")
@@ -334,10 +334,12 @@ func (a *AppContextImpl) BindExternalPlayerLinkToContextObj(vm *goja.Runtime, ob
 			Url           string `json:"url"`
 			MediaId       int    `json:"mediaId"`
 			EpisodeNumber int    `json:"episodeNumber"`
+			MediaTitle    string `json:"mediaTitle"`
 		}{
 			Url:           url,
 			MediaId:       mediaId,
 			EpisodeNumber: episodeNumber,
+			MediaTitle:    mediaTitle,
 		})
 		return goja.Undefined()
 	})

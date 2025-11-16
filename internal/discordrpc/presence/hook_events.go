@@ -1,7 +1,7 @@
 package discordrpc_presence
 
 import (
-	"seanime/internal/discordrpc/client"
+	discordrpc_client "seanime/internal/discordrpc/client"
 	"seanime/internal/hook_resolver"
 )
 
@@ -14,8 +14,11 @@ type DiscordPresenceAnimeActivityRequestedEvent struct {
 	// Anime activity object used to generate the activity
 	AnimeActivity *AnimeActivity `json:"animeActivity"`
 
+	// Name of the activity
+	Name string `json:"name"`
 	// Details of the activity
-	Details string `json:"details"`
+	Details    string `json:"details"`
+	DetailsURL string `json:"detailsUrl"`
 	// State of the activity
 	State string `json:"state"`
 	// Timestamps of the activity
@@ -25,9 +28,10 @@ type DiscordPresenceAnimeActivityRequestedEvent struct {
 	// Assets of the activity
 	LargeImage string `json:"largeImage"`
 	LargeText  string `json:"largeText"`
+	LargeURL   string `json:"largeUrl,omitempty"` // URL to large image, if any
 	SmallImage string `json:"smallImage"`
-	// [READONLY]: This is not modifiable and will always be "Seanime v{version}"
-	SmallText string `json:"smallText"`
+	SmallText  string `json:"smallText"`
+	SmallURL   string `json:"smallUrl,omitempty"` // URL to small image, if any
 
 	// Buttons of the activity
 	Buttons []*discordrpc_client.Button `json:"buttons"`
@@ -36,6 +40,8 @@ type DiscordPresenceAnimeActivityRequestedEvent struct {
 	Instance bool `json:"instance"`
 	// Type of the activity
 	Type int `json:"type"`
+	// StatusDisplayType controls formatting
+	StatusDisplayType int `json:"statusDisplayType,omitempty"`
 }
 
 // DiscordPresenceMangaActivityRequestedEvent is triggered when manga activity is requested, after the [mangaActivity] is processed, and right before the activity is sent to queue.
@@ -47,8 +53,11 @@ type DiscordPresenceMangaActivityRequestedEvent struct {
 	// Manga activity object used to generate the activity
 	MangaActivity *MangaActivity `json:"mangaActivity"`
 
+	// Name of the activity
+	Name string `json:"name"`
 	// Details of the activity
-	Details string `json:"details"`
+	Details    string `json:"details"`
+	DetailsURL string `json:"detailsUrl"`
 	// State of the activity
 	State string `json:"state"`
 	// Timestamps of the activity
@@ -58,9 +67,10 @@ type DiscordPresenceMangaActivityRequestedEvent struct {
 	// Assets of the activity
 	LargeImage string `json:"largeImage"`
 	LargeText  string `json:"largeText"`
+	LargeURL   string `json:"largeUrl,omitempty"` // URL to large image, if any
 	SmallImage string `json:"smallImage"`
-	// [READONLY]: This is not modifiable and will always be "Seanime v{version}"
-	SmallText string `json:"smallText"`
+	SmallText  string `json:"smallText"`
+	SmallURL   string `json:"smallUrl,omitempty"` // URL to small image, if any
 
 	// Buttons of the activity
 	Buttons []*discordrpc_client.Button `json:"buttons"`
@@ -69,6 +79,8 @@ type DiscordPresenceMangaActivityRequestedEvent struct {
 	Instance bool `json:"instance"`
 	// Type of the activity
 	Type int `json:"type"`
+	// StatusDisplayType controls formatting
+	StatusDisplayType int `json:"statusDisplayType,omitempty"`
 }
 
 // DiscordPresenceClientClosedEvent is triggered when the discord rpc client is closed.

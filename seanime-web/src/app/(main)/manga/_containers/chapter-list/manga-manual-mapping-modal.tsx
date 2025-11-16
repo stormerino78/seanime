@@ -3,6 +3,7 @@ import { useGetMangaMapping, useMangaManualMapping, useMangaManualSearch, useRem
 import { useSelectedMangaProvider } from "@/app/(main)/manga/_lib/handle-manga-selected-provider"
 import { ConfirmationDialog, useConfirmationDialog } from "@/components/shared/confirmation-dialog"
 import { imageShimmer } from "@/components/shared/image-helpers"
+import { SeaImage } from "@/components/shared/sea-image"
 import { AppLayoutStack } from "@/components/ui/app-layout"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/components/ui/core/styling"
@@ -11,7 +12,6 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Modal } from "@/components/ui/modal"
 import { Separator } from "@/components/ui/separator"
 import { Tooltip } from "@/components/ui/tooltip"
-import Image from "next/image"
 import { useRouter } from "next/navigation"
 import React from "react"
 import { FiSearch } from "react-icons/fi"
@@ -34,6 +34,7 @@ export function MangaManualMappingModal(props: MangaManualMappingModalProps) {
             <Modal
                 data-manga-manual-mapping-modal
                 title="Manual match"
+                description="Match this manga to a search result"
                 trigger={children}
                 contentClass="max-w-4xl"
             >
@@ -126,15 +127,11 @@ function Content({ entry }: { entry: Manga_Entry }) {
 
                     <Separator />
 
-                    <div>
-                        <p>Search from provider</p>
-                    </div>
-
                     <Form schema={searchSchema} onSubmit={handleSearch}>
                         <div className="flex gap-2 items-center">
                             <Field.Text
                                 name="query"
-                                placeholder="Search"
+                                placeholder="Enter a title..."
                                 leftIcon={<FiSearch className="text-xl text-[--muted]" />}
                                 fieldClass="w-full"
                             />
@@ -160,7 +157,7 @@ function Content({ entry }: { entry: Manga_Entry }) {
                                         }}
                                     >
 
-                                        {<Image
+                                        {<SeaImage
                                             src={item.image || "/no-cover.png"}
                                             placeholder={imageShimmer(700, 475)}
                                             sizes="10rem"
@@ -177,7 +174,7 @@ function Content({ entry }: { entry: Manga_Entry }) {
                                             trigger={<p className="line-clamp-2 text-sm absolute m-2 bottom-0 font-semibold z-[10]">
                                                 {item.title} {item.year && `(${item.year})`}
                                             </p>}
-                                            className="z-[10]"
+                                            className="z-[150]"
                                         >
                                             <p>
                                                 {item.title} {item.year && `(${item.year})`}

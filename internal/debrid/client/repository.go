@@ -3,21 +3,23 @@ package debrid_client
 import (
 	"context"
 	"fmt"
-	"github.com/rs/zerolog"
-	"github.com/samber/mo"
 	"path/filepath"
 	"seanime/internal/api/anilist"
-	"seanime/internal/api/metadata"
+	"seanime/internal/api/metadata_provider"
 	"seanime/internal/database/db"
 	"seanime/internal/database/models"
 	"seanime/internal/debrid/debrid"
 	"seanime/internal/debrid/realdebrid"
 	"seanime/internal/debrid/torbox"
+	"seanime/internal/directstream"
 	"seanime/internal/events"
 	"seanime/internal/library/playbackmanager"
 	"seanime/internal/platforms/platform"
 	"seanime/internal/torrents/torrent"
 	"seanime/internal/util/result"
+
+	"github.com/rs/zerolog"
+	"github.com/samber/mo"
 )
 
 var (
@@ -34,12 +36,15 @@ type (
 		ctxMap                 *result.Map[string, context.CancelFunc]
 		downloadLoopCancelFunc context.CancelFunc
 		torrentRepository      *torrent.Repository
+		directStreamManager    *directstream.Manager
 
 		playbackManager    *playbackmanager.PlaybackManager
 		streamManager      *StreamManager
 		completeAnimeCache *anilist.CompleteAnimeCache
-		metadataProvider   metadata.Provider
+		metadataProvider   metadata_provider.Provider
 		platform           platform.Platform
+
+		previousStreamOptions mo.Option[*StartStreamOptions]
 	}
 
 	NewRepositoryOptions struct {
@@ -47,10 +52,11 @@ type (
 		WSEventManager events.WSEventManagerInterface
 		Database       *db.Database
 
-		TorrentRepository *torrent.Repository
-		PlaybackManager   *playbackmanager.PlaybackManager
-		MetadataProvider  metadata.Provider
-		Platform          platform.Platform
+		TorrentRepository   *torrent.Repository
+		PlaybackManager     *playbackmanager.PlaybackManager
+		DirectStreamManager *directstream.Manager
+		MetadataProvider    metadata_provider.Provider
+		Platform            platform.Platform
 	}
 )
 
@@ -63,12 +69,14 @@ func NewRepository(opts *NewRepositoryOptions) (ret *Repository) {
 		settings: &models.DebridSettings{
 			Enabled: false,
 		},
-		torrentRepository:  opts.TorrentRepository,
-		platform:           opts.Platform,
-		playbackManager:    opts.PlaybackManager,
-		metadataProvider:   opts.MetadataProvider,
-		completeAnimeCache: anilist.NewCompleteAnimeCache(),
-		ctxMap:             result.NewResultMap[string, context.CancelFunc](),
+		torrentRepository:     opts.TorrentRepository,
+		platform:              opts.Platform,
+		playbackManager:       opts.PlaybackManager,
+		metadataProvider:      opts.MetadataProvider,
+		completeAnimeCache:    anilist.NewCompleteAnimeCache(),
+		ctxMap:                result.NewResultMap[string, context.CancelFunc](),
+		previousStreamOptions: mo.None[*StartStreamOptions](),
+		directStreamManager:   opts.DirectStreamManager,
 	}
 
 	ret.streamManager = NewStreamManager(ret)
@@ -228,12 +236,20 @@ func (r *Repository) CancelDownload(itemID string) error {
 	return nil
 }
 
-func (r *Repository) StartStream(opts *StartStreamOptions) error {
-	return r.streamManager.startStream(opts)
+func (r *Repository) StartStream(ctx context.Context, opts *StartStreamOptions) error {
+	return r.streamManager.startStream(ctx, opts)
+}
+
+func (r *Repository) GetStreamURL() (string, bool) {
+	return r.streamManager.currentStreamUrl, r.streamManager.currentStreamUrl != ""
 }
 
 func (r *Repository) CancelStream(opts *CancelStreamOptions) {
 	r.streamManager.cancelStream(opts)
+}
+
+func (r *Repository) GetPreviousStreamOptions() (*StartStreamOptions, bool) {
+	return r.previousStreamOptions.Get()
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

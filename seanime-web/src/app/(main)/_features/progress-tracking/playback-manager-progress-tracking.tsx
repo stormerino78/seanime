@@ -1,18 +1,19 @@
 import { API_ENDPOINTS } from "@/api/generated/endpoints"
 import {
-    usePlaybackAutoPlayNextEpisode,
     usePlaybackCancelCurrentPlaylist,
-    usePlaybackGetNextEpisode,
     usePlaybackPlaylistNext,
     usePlaybackPlayNextEpisode,
     usePlaybackSyncCurrentProgress,
 } from "@/api/hooks/playback_manager.hooks"
+import { useAutoplay, useNextEpisodeResolver } from "@/app/(main)/_features/autoplay/autoplay"
+import { usePlaylistManager } from "@/app/(main)/_features/playlists/_containers/global-playlist-manager"
+import { AutoplayCountdownModal } from "@/app/(main)/_features/progress-tracking/_components/autoplay-countdown-modal"
 import { PlaybackManager_PlaybackState, PlaybackManager_PlaylistState } from "@/app/(main)/_features/progress-tracking/_lib/playback-manager.types"
 import { useWebsocketMessageListener } from "@/app/(main)/_hooks/handle-websockets"
 import { useServerStatus } from "@/app/(main)/_hooks/use-server-status"
-import { useDebridStreamAutoplay, useTorrentStreamAutoplay } from "@/app/(main)/entry/_containers/torrent-stream/_lib/handle-torrent-stream"
 import { ConfirmationDialog, useConfirmationDialog } from "@/components/shared/confirmation-dialog"
 import { imageShimmer } from "@/components/shared/image-helpers"
+import { SeaImage } from "@/components/shared/sea-image"
 import { Button, IconButton } from "@/components/ui/button"
 import { cn } from "@/components/ui/core/styling"
 import { Modal } from "@/components/ui/modal"
@@ -23,7 +24,6 @@ import { useQueryClient } from "@tanstack/react-query"
 import { atom, useAtomValue } from "jotai"
 import { useAtom } from "jotai/react"
 import mousetrap from "mousetrap"
-import Image from "next/image"
 import React from "react"
 import { BiSolidSkipNextCircle } from "react-icons/bi"
 import { MdCancel } from "react-icons/md"
@@ -31,15 +31,14 @@ import { PiPopcornFill } from "react-icons/pi"
 import { toast } from "sonner"
 
 const __pt_showModalAtom = atom(false)
-const __pt_showAutoPlayCountdownModalAtom = atom(false)
 const __pt_isTrackingAtom = atom(false)
 const __pt_isCompletedAtom = atom(false)
-
-const AUTOPLAY_COUNTDOWN = 5
 
 type Props = {
     asSidebarButton?: boolean
 }
+
+const log = logger("PLAYBACK MANAGER")
 
 export function PlaybackManagerProgressTrackingButton({ asSidebarButton }: Props) {
     const [showModal, setShowModal] = useAtom(__pt_showModalAtom)
@@ -85,8 +84,6 @@ export function PlaybackManagerProgressTracking() {
     const qc = useQueryClient()
 
     const [showModal, setShowModal] = useAtom(__pt_showModalAtom)
-    const [showAutoPlayCountdownModal, setShowAutoPlayCountdownModal] = useAtom(__pt_showAutoPlayCountdownModalAtom)
-
 
     /**
      * Progress tracking states
@@ -108,18 +105,15 @@ export function PlaybackManagerProgressTracking() {
     const [state, setState] = React.useState<PlaybackManager_PlaybackState | null>(null)
     const [playlistState, setPlaylistState] = React.useState<PlaybackManager_PlaylistState | null>(null)
 
+    const { state: autoplayState, startAutoplay, cancelAutoplay } = useAutoplay()
 
-    const [willAutoPlay, setWillAutoPlay] = React.useState(false)
-    const willAutoPlayRef = React.useRef(false)
-    const [autoPlayInXSeconds, setAutoPlayInXSeconds] = React.useState(AUTOPLAY_COUNTDOWN)
-    const {
-        data: nextEpisodeForAutoplay,
-        mutate: getNextEpisode,
-        isPending: isFetchingNextEpisode,
-        reset: resetGetNextEp,
-    } = usePlaybackGetNextEpisode()
+    // Get next episode for local playback
+    const nextEpisodeToPlay = useNextEpisodeResolver(
+        state?.mediaId || 0,
+        state?.episodeNumber || 0,
+    )
 
-    const { mutate: autoPlayNextEpisode, isPending: isAutoPlayingNextEpisode } = usePlaybackAutoPlayNextEpisode()
+    const { currentPlaylist } = usePlaylistManager()
 
     const { mutate: syncProgress, isPending } = usePlaybackSyncCurrentProgress()
 
@@ -127,13 +121,17 @@ export function PlaybackManagerProgressTracking() {
 
     const { mutate: stopPlaylist, isSuccess: submittedStopPlaylist } = usePlaybackCancelCurrentPlaylist([playlistState?.current?.name])
 
-    const { mutate: nextEpisode, isSuccess: submittedNextEpisode, isPending: submittingNextEpisode } = usePlaybackPlayNextEpisode([state?.filename])
+    const {
+        mutate: playNextEpisodeAction,
+        isSuccess: submittedNextEpisode,
+        isPending: submittingNextEpisode,
+    } = usePlaybackPlayNextEpisode([state?.filename])
 
     // Tracking started
     useWebsocketMessageListener<PlaybackManager_PlaybackState | null>({
         type: WSEvents.PLAYBACK_MANAGER_PROGRESS_TRACKING_STARTED,
         onMessage: data => {
-            logger("PlaybackManagerProgressTracking").info("Tracking started", data)
+            log.info("Tracking started", data)
             setIsTracking(true)
             setIsCompleted(false)
             setShowModal(true) // Show the modal when tracking starts
@@ -145,28 +143,25 @@ export function PlaybackManagerProgressTracking() {
     useWebsocketMessageListener<PlaybackManager_PlaybackState | null>({
         type: WSEvents.PLAYBACK_MANAGER_PROGRESS_VIDEO_COMPLETED,
         onMessage: data => {
-            logger("PlaybackManagerProgressTracking").info("Video completed", data)
+            log.info("Video completed", data)
             setIsCompleted(true)
             setState(data)
         },
     })
 
-    // TORRENT STREAMING Autoplay
-    const { hasNextTorrentstreamEpisode, autoplayNextTorrentstreamEpisode, resetTorrentstreamAutoplayInfo } = useTorrentStreamAutoplay()
-    const { hasNextDebridstreamEpisode, autoplayNextDebridstreamEpisode, resetDebridstreamAutoplayInfo } = useDebridStreamAutoplay()
-
     // Tracking stopped completely
     useWebsocketMessageListener<string>({
         type: WSEvents.PLAYBACK_MANAGER_PROGRESS_TRACKING_STOPPED,
         onMessage: data => {
-            logger("PlaybackManagerProgressTracking").info("Tracking stopped", data, "Completion percentage:", state?.completionPercentage)
+            log.info("Tracking stopped", data, "Completion percentage:", state?.completionPercentage)
             setIsTracking(false)
             // Letting 'isCompleted' be true if the progress hasn't been updated
             // so the modal is left available for the user to update the progress manually
             if (state?.progressUpdated) {
                 // Setting 'isCompleted' to 'false' to hide the modal
-                logger("PlaybackManagerProgressTracking").info("Progress updated, setting isCompleted to false")
+                log.info("Progress updated, setting isCompleted to false")
                 setIsCompleted(false)
+                setState(null)
             }
 
             if (data === "Player closed") {
@@ -176,88 +171,24 @@ export function PlaybackManagerProgressTracking() {
                     setIsCompleted(false)
                 }
             } else if (data === "Tracking stopped") {
-                toast.info("Tracking stopped")
+                // toast.info("Tracking stopped")
             } else {
                 toast.error(data)
             }
 
             qc.invalidateQueries({ queryKey: [API_ENDPOINTS.CONTINUITY.GetContinuityWatchHistory.key] }).then()
 
-            if (!playlistState && state?.completionPercentage && state?.completionPercentage > 0.7) {
-                if (serverStatus?.settings?.library?.autoPlayNextEpisode && !willAutoPlayRef.current) {
-                    if (!isFetchingNextEpisode) {
-                        resetGetNextEp()
-                        React.startTransition(() => {
-                            setWillAutoPlay(true)
-                            willAutoPlayRef.current = true
-                            getNextEpisode()
-                            setAutoPlayInXSeconds(AUTOPLAY_COUNTDOWN)
-                        })
-                    }
+            // Start unified autoplay if conditions are met
+            if (!currentPlaylist && state && state.completionPercentage && state.completionPercentage > 0.7) {
+                if (!autoplayState.isActive) {
+                    startAutoplay(state, nextEpisodeToPlay || undefined, "local")
                 }
             }
-            setState(null)
+            // setState(null)
         },
     })
 
-    const autoplayRef = React.useRef({
-        isActive: false,
-        timerRef: null as NodeJS.Timeout | null,
-        countdownRef: null as NodeJS.Timeout | null,
-    })
 
-    function clearTimers() {
-        try {
-            if (autoplayRef.current.countdownRef) {
-                clearInterval(autoplayRef.current.countdownRef)
-            }
-            if (autoplayRef.current.timerRef) {
-                clearTimeout(autoplayRef.current.timerRef)
-            }
-        }
-        catch (e) {
-        }
-    }
-
-    /**
-     * Auto play
-     */
-    React.useEffect(() => {
-        // If the next episode is available and autoplay is enabled
-        if (willAutoPlayRef.current && !isFetchingNextEpisode && (nextEpisodeForAutoplay || hasNextTorrentstreamEpisode || hasNextDebridstreamEpisode)) {
-
-            clearTimers()
-
-            // Start the countdown
-            setShowAutoPlayCountdownModal(true)
-            autoplayRef.current.countdownRef = setInterval(() => {
-                setAutoPlayInXSeconds(prev => prev - 1)
-            }, 1000)
-
-            autoplayRef.current.timerRef = setTimeout(() => {
-                if (willAutoPlayRef.current) {
-                    setShowAutoPlayCountdownModal(false)
-
-                    if (!!nextEpisodeForAutoplay) {
-                        autoPlayNextEpisode()
-                    } else if (hasNextTorrentstreamEpisode) {
-                        autoplayNextTorrentstreamEpisode()
-                    } else if (hasNextDebridstreamEpisode) {
-                        autoplayNextDebridstreamEpisode()
-                    }
-
-                    setWillAutoPlay(false)
-                    willAutoPlayRef.current = false
-
-                }
-                clearTimers()
-            }, AUTOPLAY_COUNTDOWN * 1000)
-
-        }
-        return () => {
-            clearTimers()
-        }
-    }, [nextEpisodeForAutoplay, hasNextTorrentstreamEpisode, hasNextDebridstreamEpisode, willAutoPlay, isFetchingNextEpisode])
 
 
     // Playback state
@@ -316,17 +247,13 @@ export function PlaybackManagerProgressTracking() {
 
         mousetrap.bind("space", () => {
             if (!isPending && state?.completionPercentage && state?.completionPercentage > 0.7) {
-                setWillAutoPlay(false)
-                willAutoPlayRef.current = false
+                cancelAutoplay()
                 if (state?.canPlayNext && !playlistState) {
-                    nextEpisode()
+                    playNextEpisodeAction()
                 }
                 if (!!playlistState?.next) {
                     playlistNext()
                 }
-                // if (hasNextTorrentstreamEpisode) {
-                //     autoplayNextTorrentstreamEpisode()
-                // }
             }
         })
 
@@ -334,7 +261,7 @@ export function PlaybackManagerProgressTracking() {
             mousetrap.unbind("u")
             mousetrap.unbind("space")
         }
-    }, [state?.completionPercentage && state?.completionPercentage > 0.7, state?.canPlayNext, !!playlistState?.next])
+    }, [state?.completionPercentage && state?.completionPercentage > 0.7, state?.canPlayNext, !!playlistState?.next, cancelAutoplay])
 
     const confirmNextEpisode = useConfirmationDialog({
         title: "Play next episode",
@@ -342,7 +269,7 @@ export function PlaybackManagerProgressTracking() {
         actionText: "Confirm",
         actionIntent: "success",
         onConfirm: () => {
-            if (!submittedNextEpisode) nextEpisode()
+            if (!submittedNextEpisode) playNextEpisodeAction()
         },
     })
 
@@ -355,15 +282,6 @@ export function PlaybackManagerProgressTracking() {
             if (!submittedStopPlaylist) stopPlaylist()
         },
     })
-
-    function cancelAutoPlay() {
-        setShowAutoPlayCountdownModal(false)
-        setWillAutoPlay(false)
-        willAutoPlayRef.current = false
-        resetTorrentstreamAutoplayInfo()
-        resetDebridstreamAutoplayInfo()
-        clearTimers()
-    }
 
 
     function handleUpdateProgress() {
@@ -404,7 +322,7 @@ export function PlaybackManagerProgressTracking() {
                 </div>}
                 {state && <div data-progress-tracking-main-content className="text-center relative overflow-hidden py-2 space-y-2">
                     {state.mediaCoverImage && <div className="size-16 rounded-full relative mx-auto overflow-hidden mb-3">
-                        <Image src={state.mediaCoverImage} alt="cover image" fill className="object-cover object-center" />
+                        <SeaImage src={state.mediaCoverImage} alt="cover image" fill className="object-cover object-center" />
                     </div>}
                     {/*<p className="text-[--muted]">Currently watching</p>*/}
                     <div data-progress-tracking-title>
@@ -450,7 +368,7 @@ export function PlaybackManagerProgressTracking() {
                     <Button
                         intent="gray-subtle"
                         onClick={() => {
-                            cancelAutoPlay()
+                            cancelAutoplay()
                             confirmNextEpisode.open()
                         }}
                         className="w-full"
@@ -486,12 +404,12 @@ export function PlaybackManagerProgressTracking() {
                                 )}
                                 onClick={() => {
                                     if (!submittedPlaylistNext) {
-                                        cancelAutoPlay()
+                                        cancelAutoplay()
                                         confirmPlayNext.open()
                                     }
                                 }}
                             >
-                                {(playlistState.next?.mediaImage) && <Image
+                                {(playlistState.next?.mediaImage) && <SeaImage
                                     data-progress-tracking-playlist-next-episode-button-image
                                     src={playlistState.next?.mediaImage || ""}
                                     placeholder={imageShimmer(700, 475)}
@@ -513,7 +431,7 @@ export function PlaybackManagerProgressTracking() {
                                     intent="alert-subtle"
                                     onClick={() => {
                                         if (!submittedStopPlaylist) {
-                                            cancelAutoPlay()
+                                            cancelAutoplay()
                                             confirmStopPlaylist.open()
                                         }
                                     }}
@@ -528,39 +446,10 @@ export function PlaybackManagerProgressTracking() {
                 )}
             </Modal>
 
-            <Modal
-                data-progress-tracking-modal-auto-play-countdown
-                open={showAutoPlayCountdownModal && willAutoPlay}
-                onOpenChange={v => {
-                    if (!v) {
-                        logger("PlaybackManagerProgressTracking").info("Auto play cancelled")
-                        cancelAutoPlay()
-                    }
-                }}
-                title="Playing next episode in"
-                titleClass="text-center"
-                contentClass="!space-y-2 relative max-w-xl border-transparent !rounded-3xl"
-                closeClass="!text-[--red]"
-            >
-
-                <div data-progress-tracking-modal-auto-play-countdown-content className="rounded-[--radius-md] text-center relative overflow-hidden">
-                    <h3 className="text-5xl font-bold">{autoPlayInXSeconds}</h3>
-                </div>
-
-                {/*<div className="flex gap-2 justify-center items-center">*/}
-                {/*    <Button*/}
-                {/*        intent="alert-link"*/}
-                {/*        onClick={() => {*/}
-                {/*            logger("PlaybackManagerProgressTracking").info("Auto play cancelled")*/}
-                {/*            cancelAutoPlay()*/}
-                {/*        }}*/}
-                {/*        className="w-full"*/}
-                {/*    >*/}
-                {/*        Stop*/}
-                {/*    </Button>*/}
-                {/*</div>*/}
-
-            </Modal>
+            <AutoplayCountdownModal
+                autoplayState={autoplayState}
+                onCancel={cancelAutoplay}
+            />
 
             <ConfirmationDialog {...confirmPlayNext} />
             <ConfirmationDialog {...confirmStopPlaylist} />

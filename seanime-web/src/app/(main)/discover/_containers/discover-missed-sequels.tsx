@@ -1,12 +1,13 @@
 import { useAnilistListMissedSequels } from "@/api/hooks/anilist.hooks"
 import { MediaEntryCard } from "@/app/(main)/_features/media/_components/media-entry-card"
 import { MediaEntryCardSkeleton } from "@/app/(main)/_features/media/_components/media-entry-card-skeleton"
+import { PageWrapper } from "@/components/shared/page-wrapper"
 import { Carousel, CarouselContent, CarouselDotButtons } from "@/components/ui/carousel"
-import { useInView } from "framer-motion"
+import { useInView } from "motion/react"
 import React from "react"
 
 
-export function DiscoverMissedSequelsSection() {
+export function DiscoverMissedSequelsSection({ title = "You Might Have Missed" }: { title?: string }) {
     const ref = React.useRef(null)
     const isInView = useInView(ref, { once: true })
     const { data, isLoading } = useAnilistListMissedSequels(isInView)
@@ -16,8 +17,8 @@ export function DiscoverMissedSequelsSection() {
     if (!data?.length) return null
 
     return (
-        <div className="space-y-2 z-[5] relative" data-discover-missed-sequels-container>
-            <h2>You might have missed</h2>
+        <PageWrapper className="space-y-2 z-[5] relative" data-discover-missed-sequels-container>
+            <h2>{title}</h2>
             <Carousel
                 className="w-full max-w-full"
                 gap="xl"
@@ -36,7 +37,7 @@ export function DiscoverMissedSequelsSection() {
                                 key={media.id}
                                 media={media}
                                 showLibraryBadge
-                                containerClassName="basis-[200px] md:basis-[250px] mx-2 my-8"
+                                containerClassName="basis-[200px] md:basis-[250px] mx-2 mt-8 mb-0"
                                 showTrailer
                                 type="anime"
                             />
@@ -44,7 +45,7 @@ export function DiscoverMissedSequelsSection() {
                     }) : [...Array(10).keys()].map((v, idx) => <MediaEntryCardSkeleton key={idx} />)}
                 </CarouselContent>
             </Carousel>
-        </div>
+        </PageWrapper>
     )
 
 }

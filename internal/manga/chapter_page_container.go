@@ -1,10 +1,9 @@
 package manga
 
 import (
-	"errors"
 	"fmt"
 	"seanime/internal/extension"
-	"seanime/internal/manga/providers"
+	manga_providers "seanime/internal/manga/providers"
 	"seanime/internal/util"
 	"sync"
 
@@ -37,7 +36,7 @@ func (r *Repository) GetMangaPageContainer(
 	mediaId int,
 	chapterId string,
 	doublePage bool,
-	isOffline bool,
+	isOffline *bool,
 ) (ret *PageContainer, err error) {
 	defer util.HandlePanicInModuleWithError("manga/GetMangaPageContainer", &err)
 
@@ -45,7 +44,15 @@ func (r *Repository) GetMangaPageContainer(
 	// |      Downloads      |
 	// +---------------------+
 
-	if isOffline {
+	providerExtension, extensionExists := extension.GetExtension[extension.MangaProviderExtension](r.providerExtensionBank, provider)
+
+	var isLocalProvider bool
+
+	if extensionExists {
+		_, isLocalProvider = providerExtension.GetProvider().(*manga_providers.Local)
+	}
+
+	if *isOffline && !isLocalProvider && extensionExists {
 		ret, err = r.getDownloadedMangaPageContainer(provider, mediaId, chapterId)
 		if err != nil {
 			return nil, err
@@ -53,9 +60,15 @@ func (r *Repository) GetMangaPageContainer(
 		return ret, nil
 	}
 
-	ret, _ = r.getDownloadedMangaPageContainer(provider, mediaId, chapterId)
-	if ret != nil {
-		return ret, nil
+	if !isLocalProvider || !extensionExists {
+		ret, err = r.getDownloadedMangaPageContainer(provider, mediaId, chapterId)
+		if ret != nil {
+			return ret, nil
+		}
+		if !extensionExists && err != nil {
+			r.logger.Error().Err(err).Str("provider", provider).Msg("manga: Provider not found, chapter not downloaded")
+			return nil, fmt.Errorf("manga: Provider not found, chapter not downloaded, %w", err)
+		}
 	}
 
 	// +---------------------+
@@ -84,7 +97,7 @@ func (r *Repository) GetMangaPageContainer(
 	pageBucket := r.getFcProviderBucket(provider, mediaId, bucketTypePage)
 
 	// Check if the container is in the cache
-	if found, _ := r.fileCacher.Get(pageBucket, pageContainerKey, &container); found {
+	if found, _ := r.fileCacher.Get(pageBucket, pageContainerKey, &container); found && !isLocalProvider {
 
 		// Hydrate page dimensions
 		pageDimensions, _ := r.getPageDimensions(doublePage, provider, mediaId, chapterId, container.Pages)
@@ -123,12 +136,6 @@ func (r *Repository) GetMangaPageContainer(
 		return nil, ErrChapterNotFound
 	}
 
-	providerExtension, ok := extension.GetExtension[extension.MangaProviderExtension](r.providerExtensionBank, provider)
-	if !ok {
-		r.logger.Error().Str("provider", provider).Msg("manga: Provider not found")
-		return nil, errors.New("manga: Provider not found")
-	}
-
 	// Get the chapter pages
 	var pages []*hibikemanga.ChapterPage
 
@@ -159,10 +166,12 @@ func (r *Repository) GetMangaPageContainer(
 		IsDownloaded:   false,
 	}
 
-	// Set cache
-	err = r.fileCacher.Set(pageBucket, pageContainerKey, container)
-	if err != nil {
-		r.logger.Warn().Err(err).Msg("manga: Failed to populate cache")
+	// Set cache only if not local provider
+	if !isLocalProvider {
+		err = r.fileCacher.Set(pageBucket, pageContainerKey, container)
+		if err != nil {
+			r.logger.Warn().Err(err).Msg("manga: Failed to populate cache")
+		}
 	}
 
 	r.logger.Debug().Str("key", pageContainerKey).Msg("manga: Retrieved pages")
@@ -200,9 +209,14 @@ func (r *Repository) getPageDimensions(enabled bool, provider string, mediaId in
 		wg.Add(1)
 		go func(page *hibikemanga.ChapterPage) {
 			defer wg.Done()
-			buf, err := manga_providers.GetImageByProxy(page.URL, page.Headers)
-			if err != nil {
-				return
+			var buf []byte
+			if page.Buf != nil {
+				buf = page.Buf
+			} else {
+				buf, err = manga_providers.GetImageByProxy(page.URL, page.Headers)
+				if err != nil {
+					return
+				}
 			}
 			width, height, err := getImageNaturalSizeB(buf)
 			if err != nil {

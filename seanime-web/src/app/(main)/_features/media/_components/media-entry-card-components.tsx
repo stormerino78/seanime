@@ -1,20 +1,21 @@
 import { AL_BaseAnime_NextAiringEpisode, AL_MediaListStatus, AL_MediaStatus } from "@/api/generated/types"
+import { ElectronYoutubeEmbed, useElectronYoutubeEmbed } from "@/app/(main)/_electron/electron-embed"
 import { MediaCardBodyBottomGradient } from "@/app/(main)/_features/custom-ui/item-bottom-gradients"
 import { MediaEntryProgressBadge } from "@/app/(main)/_features/media/_components/media-entry-progress-badge"
-import { __ui_fixBorderRenderingArtifacts } from "@/app/(main)/settings/_containers/ui-settings"
+import { GlowingEffect } from "@/components/shared/glowing-effect"
 import { imageShimmer } from "@/components/shared/image-helpers"
+import { SeaImage } from "@/components/shared/sea-image"
 import { SeaLink } from "@/components/shared/sea-link"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/components/ui/core/styling"
 import { Tooltip } from "@/components/ui/tooltip"
 import { getImageUrl } from "@/lib/server/assets"
 import { useThemeSettings } from "@/lib/theme/hooks"
+import { __isElectronDesktop__ } from "@/types/constants"
 import { addSeconds, formatDistanceToNow } from "date-fns"
 import { atom, useAtom } from "jotai/index"
-import { useAtomValue } from "jotai/react"
 import capitalize from "lodash/capitalize"
 import startCase from "lodash/startCase"
-import Image from "next/image"
 import React, { memo } from "react"
 import { BiCalendarAlt } from "react-icons/bi"
 import { IoLibrarySharp } from "react-icons/io5"
@@ -89,13 +90,14 @@ export function MediaEntryCardHoverPopup(props: MediaEntryCardHoverPopupProps) {
     } = props
 
     const ts = useThemeSettings()
-    const markBorderRenderingArtifacts = useAtomValue(__ui_fixBorderRenderingArtifacts)
+    // const markBorderRenderingArtifacts = useAtomValue(__ui_fixBorderRenderingArtifacts)
+    const markBorderRenderingArtifacts = true
 
     return (
         <div
             data-media-entry-card-hover-popup
             className={cn(
-                !ts.enableMediaCardBlurredBackground ? "bg-[--media-card-popup-background]" : "bg-[--background]",
+                !ts.enableMediaCardBlurredBackground ? "bg-[--media-card-popup-background]" : "bg-gray-950/90 backdrop-blur-sm",
                 "absolute z-[15] opacity-0 scale-100 border border-[rgb(255_255_255_/_5%)] duration-150",
                 "group-hover/media-entry-card:opacity-100 group-hover/media-entry-card:scale-100",
                 "group-focus-visible/media-entry-card:opacity-100 group-focus-visible/media-entry-card:scale-100",
@@ -103,35 +105,44 @@ export function MediaEntryCardHoverPopup(props: MediaEntryCardHoverPopupProps) {
                 "h-[105%] w-[100%] -top-[5%] rounded-[0.7rem] transition ease-in-out",
                 "focus-visible:ring-2 ring-brand-400 focus-visible:outline-0",
                 "hidden lg:block", // Hide on small screens
-                markBorderRenderingArtifacts && "w-[101%] -left-[0.5%]",
+                markBorderRenderingArtifacts && "w-[103%] -left-[1.5%]",
             )}
             {...rest}
         >
-            {(ts.enableMediaCardBlurredBackground && !!coverImage) &&
-                <div
-                    data-media-entry-card-hover-popup-image-container
-                    className="absolute top-0 left-0 w-full h-full rounded-[--radius] overflow-hidden"
-                >
-                    <Image
-                        data-media-entry-card-hover-popup-image
-                        src={getImageUrl(coverImage || "")}
-                        alt={"cover image"}
-                        fill
-                        placeholder={imageShimmer(700, 475)}
-                        quality={100}
-                    sizes="20rem"
-                    className="object-cover object-center transition opacity-20"
-                />
+            <GlowingEffect
+                spread={50}
+                glow={true}
+                disabled={false}
+                proximity={100}
+                inactiveZone={0.01}
+                // movementDuration={4}
+                className="opacity-15"
+            />
+            {/*{(ts.enableMediaCardBlurredBackground && !!coverImage) &&*/}
+            {/*    <div*/}
+            {/*        data-media-entry-card-hover-popup-image-container*/}
+            {/*        className="absolute top-0 left-0 w-full h-full rounded-[--radius] overflow-hidden"*/}
+            {/*    >*/}
+            {/*        <SeaImage*/}
+            {/*            data-media-entry-card-hover-popup-image*/}
+            {/*            src={getImageUrl(coverImage || "")}*/}
+            {/*            alt={"cover image"}*/}
+            {/*            fill*/}
+            {/*            placeholder={imageShimmer(700, 475)}*/}
+            {/*            quality={100}*/}
+            {/*            sizes="20rem"*/}
+            {/*            className="object-cover object-center transition opacity-20"*/}
+            {/*        />*/}
 
-                <div
-                    data-media-entry-card-hover-popup-image-blur-overlay
-                    className="absolute top-0 w-full h-full backdrop-blur-xl z-[0]"
-                ></div>
-            </div>}
+            {/*        <div*/}
+            {/*            data-media-entry-card-hover-popup-image-blur-overlay*/}
+            {/*            className="absolute top-0 w-full h-full backdrop-blur-xl z-[0]"*/}
+            {/*        ></div>*/}
+            {/*    </div>}*/}
 
             {ts.enableMediaCardBlurredBackground && <div
                 data-media-entry-card-hover-popup-image-blur-gradient
-                className="w-full absolute top-0 h-full opacity-60 bg-gradient-to-b from-70% from-[--background] to-transparent z-[2] rounded-[--radius]"
+                className="w-full absolute top-0 h-[50%] opacity-60 bg-gradient-to-b from-30% from-[--background] to-transparent z-[2] rounded-[--radius]"
             />}
 
             <div data-media-entry-card-hover-popup-content className="p-2 h-full w-full flex flex-col justify-between relative z-[2]">
@@ -205,6 +216,7 @@ type MediaEntryCardHoverPopupTitleSectionProps = {
     season?: string
     year?: number
     format?: string
+    onClick?: () => void
 }
 
 export function MediaEntryCardHoverPopupTitleSection(props: MediaEntryCardHoverPopupTitleSectionProps) {
@@ -215,6 +227,7 @@ export function MediaEntryCardHoverPopupTitleSection(props: MediaEntryCardHoverP
         season,
         year,
         format,
+        onClick,
         ...rest
     } = props
 
@@ -222,8 +235,9 @@ export function MediaEntryCardHoverPopupTitleSection(props: MediaEntryCardHoverP
         <>
             <div data-media-entry-card-hover-popup-title className="select-none">
                 <SeaLink
-                    href={link}
+                    href={!onClick ? link : undefined}
                     className="text-center text-pretty font-medium text-sm lg:text-base px-4 leading-0 line-clamp-2 hover:text-brand-100"
+                    onClick={onClick}
                 >
                     {title}
                 </SeaLink>
@@ -292,6 +306,7 @@ type MediaEntryCardBodyProps = {
     showLibraryBadge?: boolean
     children?: React.ReactNode
     blurAdultContent?: boolean
+    onClick?: () => void
 }
 
 export function MediaEntryCardBody(props: MediaEntryCardBodyProps) {
@@ -312,13 +327,15 @@ export function MediaEntryCardBody(props: MediaEntryCardBodyProps) {
         showLibraryBadge,
         children,
         blurAdultContent,
+        onClick,
         ...rest
     } = props
 
     return (
         <>
             <SeaLink
-                href={link}
+                href={!onClick ? link : undefined}
+                onClick={onClick}
                 className="w-full relative focus-visible:ring-2 ring-[--brand]"
                 data-media-entry-card-body-link
             >
@@ -364,13 +381,13 @@ export function MediaEntryCardBody(props: MediaEntryCardBodyProps) {
                     {/*RELEASING BADGE*/}
                     {(status === "RELEASING" || status === "NOT_YET_RELEASED") &&
                         <div data-media-entry-card-body-releasing-badge-container className="absolute z-[10] right-1 top-2">
-                        <Badge intent={status === "RELEASING" ? "primary-solid" : "zinc-solid"} size="lg"><RiSignalTowerLine /></Badge>
-                    </div>}
+                            <Badge intent={status === "RELEASING" ? "primary-solid" : "zinc-solid"} size="lg"><RiSignalTowerLine /></Badge>
+                        </div>}
 
 
                     {children}
 
-                    <Image
+                    <SeaImage
                         data-media-entry-card-body-image
                         src={getImageUrl(bannerImage || "")}
                         alt={""}
@@ -449,6 +466,7 @@ export const MediaEntryCardHoverPopupBanner = memo(({
     link,
     listStatus,
     status,
+    onClick,
 }: {
     mediaId: number
     trailerId?: string
@@ -463,6 +481,7 @@ export const MediaEntryCardHoverPopupBanner = memo(({
     isAdult?: boolean
     listStatus?: AL_MediaListStatus
     status?: AL_MediaStatus
+    onClick?: () => void
 }) => {
 
     const [trailerLoaded, setTrailerLoaded] = React.useState(false)
@@ -472,11 +491,13 @@ export const MediaEntryCardHoverPopupBanner = memo(({
 
     const ts = useThemeSettings()
 
+    const { electronEmbedAddress } = useElectronYoutubeEmbed()
+
     React.useEffect(() => {
         setTrailerEnabled(!!trailerId && !disableAnimeCardTrailers && showTrailer)
     }, [!!trailerId, !disableAnimeCardTrailers, showTrailer])
 
-    return <SeaLink tabIndex={-1} href={link} data-media-entry-card-hover-popup-banner-link>
+    return <SeaLink tabIndex={-1} href={!onClick ? link : undefined} onClick={onClick} data-media-entry-card-hover-popup-banner-link>
         <div data-media-entry-card-hover-popup-banner-container className="aspect-[4/2] relative rounded-[--radius] mb-2 cursor-pointer">
             {(showProgressBar && progress && listStatus && progressTotal && progress !== progressTotal) &&
                 <div
@@ -495,14 +516,14 @@ export const MediaEntryCardHoverPopupBanner = memo(({
 
             {(status === "RELEASING" || status === "NOT_YET_RELEASED") &&
                 <div data-media-entry-card-hover-popup-banner-releasing-badge-container className="absolute z-[10] right-1 top-2">
-                <Tooltip
-                    trigger={<Badge intent={status === "RELEASING" ? "primary-solid" : "zinc-solid"} size="lg"><RiSignalTowerLine /></Badge>}
-                >
-                    {status === "RELEASING" ? "Releasing" : "Not yet released"}
-                </Tooltip>
-            </div>}
+                    <Tooltip
+                        trigger={<Badge intent={status === "RELEASING" ? "primary-solid" : "zinc-solid"} size="lg"><RiSignalTowerLine /></Badge>}
+                    >
+                        {status === "RELEASING" ? "Releasing" : "Not yet released"}
+                    </Tooltip>
+                </div>}
 
-            {(!!bannerImage) ? <Image
+            {(!!bannerImage) ? <div className="absolute object-cover top-0 object-center w-full h-full rounded-[--radius] overflow-hidden"><SeaImage
                 data-media-entry-card-hover-popup-banner-image
                 src={getImageUrl(bannerImage || "")}
                 alt={"banner"}
@@ -511,10 +532,11 @@ export const MediaEntryCardHoverPopupBanner = memo(({
                 quality={100}
                 sizes="20rem"
                 className={cn(
-                    "object-cover top-0 object-center rounded-[--radius] transition",
+                    "object-cover top-0 object-center rounded-[--radius] transition scale-[1.04] duration-200",
+                    "group-hover/media-entry-card:scale-100",
                     trailerLoaded && "hidden",
                 )}
-            /> : <div
+            /></div> : <div
                 data-media-entry-card-hover-popup-banner-image-gradient
                 className="h-full block absolute w-full bg-gradient-to-t from-gray-800 to-transparent"
             ></div>}
@@ -539,27 +561,33 @@ export const MediaEntryCardHoverPopupBanner = memo(({
                     !trailerLoaded && "hidden",
                 )}
             >
-                <iframe
+                {__isElectronDesktop__ && <ElectronYoutubeEmbed
+                    isCompact
+                    trailerId={`${trailerId}`}
+                    onLoad={() => setTimeout(() => setTrailerLoaded(true), 1500)}
+                    onError={() => setTrailerEnabled(false)}
+                />}
+                {!__isElectronDesktop__ && <iframe
                     data-media-entry-card-hover-popup-banner-trailer
-                    src={`https://www.youtube-nocookie.com/embed/${trailerId}?autoplay=1&controls=0&mute=1&disablekb=1&loop=1&vq=medium&playlist=${trailerId}&cc_lang_pref=ja`}
+                    src={`https://www.youtube-nocookie.com/embed/${trailerId}?autoplay=1&controls=0&mute=1&disablekb=1&loop=1&vq=medium&playlist=${trailerId}&cc_lang_pref=ja&enablejsapi=true`}
                     className={cn(
-                        "aspect-video w-full absolute left-0",
+                        "aspect-video w-full absolute left-0 h-[calc(100%+120px)] top-[50%] -translate-y-1/2",
                     )}
                     // playsInline
                     // preload="none"
                     // loop
                     allow="autoplay"
                     // muted
-                    onLoad={() => setTrailerLoaded(true)}
+                    onLoad={() => setTimeout(() => setTrailerLoaded(true), 1000)}
                     onError={() => setTrailerEnabled(false)}
-                />
+                />}
             </div>}
 
             {<div
                 data-media-entry-card-hover-popup-banner-gradient
                 className={cn(
                     "w-full absolute -bottom-1 h-[80%] from-10% bg-gradient-to-t from-[--media-card-popup-background] to-transparent z-[2]",
-                    ts.enableMediaCardBlurredBackground && "from-[--background] from-0% bottom-0 rounded-[--radius] opacity-80",
+                    ts.enableMediaCardBlurredBackground && "from-[--background] from-0% bottom-0 rounded-[--radius] opacity-60",
                 )}
             />}
         </div>

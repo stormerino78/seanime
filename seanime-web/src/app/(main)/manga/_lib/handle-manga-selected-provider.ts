@@ -29,8 +29,12 @@ export const __manga_entryFiltersAtom = atomWithStorage<Record<string, MangaEntr
 const getDefaultMangaProvider = (
     serverStatus: Status | undefined,
     extensions: ExtensionRepo_MangaProviderExtensionItem[] | undefined,
-) => {
-    return serverStatus?.settings?.manga?.defaultMangaProvider || extensions?.[0]?.id || null
+): string | null => {
+    const firstExt = ((!!extensions?.length && extensions?.length > 1) ? extensions?.filter(n => n.id !== "local-manga")?.[0] : extensions?.[0])
+    const defaultExt = !!serverStatus?.settings?.manga?.defaultMangaProvider
+        ? extensions?.find(n => n.id === serverStatus?.settings?.manga?.defaultMangaProvider)
+        : null
+    return defaultExt?.id || firstExt?.id || null
 }
 
 /**
@@ -80,6 +84,22 @@ export function useStoredMangaProviders(_extensions: ExtensionRepo_MangaProvider
                 ...prev,
                 [String(mediaId)]: providerId,
             }))
+        },
+        overwriteStoredProvidersWith: (providerId: string) => {
+            // check provider exists
+            const ext = extensions?.find(p => p.id === providerId)
+            if (!ext) return
+            for (const [mediaId, currProvider] of Object.entries(storedProvider)) {
+                if (currProvider !== providerId) {
+                    setStoredProvider(prev => ({
+                        ...prev,
+                        [mediaId]: providerId,
+                    }))
+                }
+            }
+        },
+        overwriteStoredProviders: (rec: Record<string, string>) => {
+            setStoredProvider(rec)
         },
     }
 }
@@ -252,7 +272,7 @@ export function getMangaEntryLatestChapterNumber(
 
     if (!provider) return null
 
-    const mangaLatestChapterNumbers = latestChapterNumbers[Number(mangaId)]?.filter(item => {
+    const mangaLatestChapterNumbers = latestChapterNumbers[Number(mangaId)]?.filter?.(item => {
         return item.provider === provider
     })
 

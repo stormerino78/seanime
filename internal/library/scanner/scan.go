@@ -1,9 +1,10 @@
 package scanner
 
 import (
+	"context"
 	"errors"
 	"seanime/internal/api/anilist"
-	"seanime/internal/api/metadata"
+	"seanime/internal/api/metadata_provider"
 	"seanime/internal/events"
 	"seanime/internal/hook"
 	"seanime/internal/library/anime"
@@ -32,14 +33,18 @@ type Scanner struct {
 	SkipIgnoredFiles   bool
 	ScanSummaryLogger  *summary.ScanSummaryLogger
 	ScanLogger         *ScanLogger
-	MetadataProvider   metadata.Provider
+	MetadataProvider   metadata_provider.Provider
 	MatchingThreshold  float64
 	MatchingAlgorithm  string
 }
 
 // Scan will scan the directory and return a list of anime.LocalFile.
-func (scn *Scanner) Scan() (lfs []*anime.LocalFile, err error) {
+func (scn *Scanner) Scan(ctx context.Context) (lfs []*anime.LocalFile, err error) {
 	defer util.HandlePanicWithError(&err)
+
+	go func() {
+		anime.EpisodeCollectionFromLocalFilesCache.Clear()
+	}()
 
 	scn.WSEventManager.SendEvent(events.EventScanProgress, 0)
 	scn.WSEventManager.SendEvent(events.EventScanStatus, "Retrieving local files...")
@@ -231,6 +236,8 @@ func (scn *Scanner) Scan() (lfs []*anime.LocalFile, err error) {
 	if len(localFiles) == 0 {
 		scn.WSEventManager.SendEvent(events.EventScanProgress, 90)
 		scn.WSEventManager.SendEvent(events.EventScanStatus, "Verifying file integrity...")
+
+		scn.Logger.Debug().Int("skippedLfs", len(skippedLfs)).Msgf("scanner: Adding skipped local files")
 		// Add skipped files
 		if len(skippedLfs) > 0 {
 			for _, sf := range skippedLfs {
@@ -266,7 +273,7 @@ func (scn *Scanner) Scan() (lfs []*anime.LocalFile, err error) {
 	// +---------------------+
 
 	// Fetch media needed for matching
-	mf, err := NewMediaFetcher(&MediaFetcherOptions{
+	mf, err := NewMediaFetcher(ctx, &MediaFetcherOptions{
 		Enhanced:               scn.Enhanced,
 		Platform:               scn.Platform,
 		MetadataProvider:       scn.MetadataProvider,
@@ -359,7 +366,7 @@ func (scn *Scanner) Scan() (lfs []*anime.LocalFile, err error) {
 	if len(mf.UnknownMediaIds) < 5 {
 		scn.WSEventManager.SendEvent(events.EventScanStatus, "Adding missing media to AniList...")
 
-		if err = scn.Platform.AddMediaToCollection(mf.UnknownMediaIds); err != nil {
+		if err = scn.Platform.AddMediaToCollection(ctx, mf.UnknownMediaIds); err != nil {
 			scn.Logger.Warn().Msg("scanner: An error occurred while adding media to planning list: " + err.Error())
 		}
 	}
@@ -373,6 +380,8 @@ func (scn *Scanner) Scan() (lfs []*anime.LocalFile, err error) {
 	// +---------------------+
 	// |    Merge files      |
 	// +---------------------+
+
+	scn.Logger.Debug().Int("skippedLfs", len(skippedLfs)).Msgf("scanner: Adding skipped local files")
 
 	// Merge skipped files with scanned files
 	// Only files that exist (this removes deleted/moved files)
@@ -413,4 +422,9 @@ func (scn *Scanner) Scan() (lfs []*anime.LocalFile, err error) {
 	localFiles = completedEvent.LocalFiles
 
 	return localFiles, nil
+}
+
+// InLibrariesOnly removes files are not under the library paths
+func (scn *Scanner) InLibrariesOnly(lfs []*anime.LocalFile) {
+
 }

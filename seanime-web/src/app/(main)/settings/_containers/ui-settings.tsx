@@ -15,10 +15,10 @@ import {
     ThemeMediaPageBannerSizeOptions,
     ThemeMediaPageBannerType,
     ThemeMediaPageBannerTypeOptions,
-    ThemeMediaPageInfoBoxSizeOptions,
     useThemeSettings,
 } from "@/lib/theme/hooks"
 import { THEME_COLOR_BANK } from "@/lib/theme/theme-bank"
+import { __isDesktop__ } from "@/types/constants"
 import { colord } from "colord"
 import { atom } from "jotai"
 import { useAtom } from "jotai/react"
@@ -68,6 +68,7 @@ const themeSchema = defineSchema(({ z }) => z.object({
     hideDownloadedEpisodeCardFilename: z.boolean().default(THEME_DEFAULT_VALUES.hideDownloadedEpisodeCardFilename),
     customCSS: z.string().default(THEME_DEFAULT_VALUES.customCSS),
     mobileCustomCSS: z.string().default(THEME_DEFAULT_VALUES.mobileCustomCSS),
+    unpinnedMenuItems: z.array(z.string()).default(THEME_DEFAULT_VALUES.unpinnedMenuItems),
 }))
 
 export const __ui_fixBorderRenderingArtifacts = atomWithStorage("sea-ui-settings-fix-border-rendering-artifacts", false)
@@ -84,6 +85,11 @@ const tabsTriggerClass = cn(
 const tabsListClass = cn(
     "w-full flex flex-row lg:flex-row flex-wrap h-fit",
 )
+
+const tabContentClass = cn(
+    "space-y-4 animate-in fade-in-0 duration-300",
+)
+
 
 export function UISettings() {
     const themeSettings = useThemeSettings()
@@ -263,12 +269,13 @@ export function UISettings() {
                 hideDownloadedEpisodeCardFilename: themeSettings?.hideDownloadedEpisodeCardFilename,
                 customCSS: themeSettings?.customCSS,
                 mobileCustomCSS: themeSettings?.mobileCustomCSS,
+                unpinnedMenuItems: themeSettings?.unpinnedMenuItems ?? [],
             }}
             stackClass="space-y-4 relative"
         >
             {(f) => (
                 <>
-                    <SettingsIsDirty className="-top-14" />
+                    <SettingsIsDirty className="" />
                     <ObserveColorSettings />
 
                     <Tabs
@@ -278,14 +285,14 @@ export function UISettings() {
                         triggerClass={tabsTriggerClass}
                         listClass={tabsListClass}
                     >
-                        <TabsList className="flex-wrap max-w-full bg-[--paper] p-2 border rounded-lg">
+                        <TabsList className="flex-wrap max-w-full bg-[--paper] p-2 border rounded-xl">
                             <TabsTrigger value="main">Theme</TabsTrigger>
                             <TabsTrigger value="media">Media</TabsTrigger>
                             <TabsTrigger value="navigation">Navigation</TabsTrigger>
-                            <TabsTrigger value="browser-client">Rendering</TabsTrigger>
+                            {/*<TabsTrigger value="browser-client">Rendering</TabsTrigger>*/}
                         </TabsList>
 
-                        <TabsContent value="main" className="space-y-4">
+                        <TabsContent value="main" className={tabContentClass}>
 
                             <SettingsCard title="Color scheme">
                                 <Field.Switch
@@ -494,7 +501,7 @@ export function UISettings() {
 
                         </TabsContent>
 
-                        <TabsContent value="navigation" className="space-y-4">
+                        <TabsContent value="navigation" className={tabContentClass}>
 
                             <SettingsCard title="Sidebar">
 
@@ -511,13 +518,67 @@ export function UISettings() {
                                     name="disableSidebarTransparency"
                                 />
 
+                                <Field.Combobox
+                                    label="Unpinned menu items"
+                                    name="unpinnedMenuItems"
+                                    emptyMessage="No items selected"
+                                    multiple
+                                    options={[
+                                        {
+                                            label: "Schedule",
+                                            textValue: "Schedule",
+                                            value: "schedule",
+                                        },
+                                        {
+                                            label: "Manga",
+                                            textValue: "Manga",
+                                            value: "manga",
+                                        },
+                                        {
+                                            label: "Discover",
+                                            textValue: "Discover",
+                                            value: "discover",
+                                        },
+                                        {
+                                            label: "My lists",
+                                            textValue: "My lists",
+                                            value: "lists",
+                                        },
+                                        {
+                                            label: "Auto Downloader",
+                                            textValue: "Auto Downloader",
+                                            value: "auto-downloader",
+                                        },
+                                        {
+                                            label: "Torrent list",
+                                            textValue: "Torrent list",
+                                            value: "torrent-list",
+                                        },
+                                        {
+                                            label: "Debrid",
+                                            textValue: "Debrid",
+                                            value: "debrid",
+                                        },
+                                        {
+                                            label: "Scan summaries",
+                                            textValue: "Scan summaries",
+                                            value: "scan-summaries",
+                                        },
+                                        {
+                                            label: "Search",
+                                            textValue: "Search",
+                                            value: "search",
+                                        },
+                                    ]}
+                                />
+
                             </SettingsCard>
 
                             <SettingsCard title="Navbar">
 
                                 <Field.Switch
                                     side="right"
-                                    label={process.env.NEXT_PUBLIC_PLATFORM === "desktop" ? "Hide top navbar (Web interface)" : "Hide top navbar"}
+                                    label={__isDesktop__ ? "Hide top navbar (Web interface)" : "Hide top navbar"}
                                     name="hideTopNavbar"
                                     help="Switches to sidebar-only mode."
                                 />
@@ -526,19 +587,19 @@ export function UISettings() {
 
                         </TabsContent>
 
-                        <TabsContent value="media" className="space-y-4">
+                        <TabsContent value="media" className={tabContentClass}>
 
-                            <SettingsCard title="Collection screens">
+                            <SettingsCard title="Screens">
 
                                 {!serverStatus?.settings?.library?.enableWatchContinuity && (
-                                    f.watch('continueWatchingDefaultSorting').includes("LAST_WATCHED") ||
-                                    f.watch('animeLibraryCollectionDefaultSorting').includes("LAST_WATCHED")
+                                    f.watch("continueWatchingDefaultSorting").includes("LAST_WATCHED") ||
+                                    f.watch("animeLibraryCollectionDefaultSorting").includes("LAST_WATCHED")
                                 ) && (
-                                        <Alert
-                                            intent="alert"
-                                            description="Watch continuity needs to be enabled to use the last watched sorting options."
-                                        />
-                                    )}
+                                    <Alert
+                                        intent="alert"
+                                        description="Watch continuity needs to be enabled to use the last watched sorting options."
+                                    />
+                                )}
 
                                 <Field.RadioCards
                                     label="Banner type"
@@ -608,12 +669,12 @@ export function UISettings() {
                                     help={ThemeMediaPageBannerSizeOptions.find(n => n.value === f.watch("mediaPageBannerSize"))?.description}
                                 />
 
-                                <Field.RadioCards
-                                    label="Banner info layout"
-                                    name="mediaPageBannerInfoBoxSize"
-                                    options={ThemeMediaPageInfoBoxSizeOptions.map(n => ({ value: n.value, label: n.label }))}
-                                    stackClass="flex flex-col md:flex-row flex-wrap gap-2 space-y-0"
-                                />
+                                {/*<Field.RadioCards*/}
+                                {/*    label="Banner info layout"*/}
+                                {/*    name="mediaPageBannerInfoBoxSize"*/}
+                                {/*    options={ThemeMediaPageInfoBoxSizeOptions.map(n => ({ value: n.value, label: n.label }))}*/}
+                                {/*    stackClass="flex flex-col md:flex-row flex-wrap gap-2 space-y-0"*/}
+                                {/*/>*/}
 
                                 <Field.Switch
                                     side="right"
@@ -648,11 +709,11 @@ export function UISettings() {
 
                             <SettingsCard title="Episode card">
 
-                                {/* <Field.Switch
+                                <Field.Switch
                                     side="right"
                                     label="Legacy episode cards"
                                     name="useLegacyEpisodeCard"
-                                 /> */}
+                                />
 
                                 <Field.Switch
                                     side="right"
@@ -693,27 +754,27 @@ export function UISettings() {
 
                         </TabsContent>
 
-                        <TabsContent value="browser-client" className="space-y-4">
+                        {/*<TabsContent value="browser-client" className={tabContentClass}>*/}
 
-                            <SettingsCard>
-                                <Switch
-                                    side="right"
-                                    label="Fix border rendering artifacts (client-specific)"
-                                    name="enableMediaCardStyleFix"
-                                    help="Seanime will try to fix border rendering artifacts. This setting only affects this client/browser."
-                                    value={fixBorderRenderingArtifacts}
-                                    onValueChange={(v) => {
-                                        setFixBorerRenderingArtifacts(v)
-                                        if (v) {
-                                            toast.success("Handling border rendering artifacts")
-                                        } else {
-                                            toast.success("Border rendering artifacts are no longer handled")
-                                        }
-                                    }}
-                                />
-                            </SettingsCard>
+                        {/*    <SettingsCard>*/}
+                        {/*        <Switch*/}
+                        {/*            side="right"*/}
+                        {/*            label="Fix border rendering artifacts (client-specific)"*/}
+                        {/*            name="enableMediaCardStyleFix"*/}
+                        {/*            help="Seanime will try to fix border rendering artifacts. This setting only affects this client/browser."*/}
+                        {/*            value={fixBorderRenderingArtifacts}*/}
+                        {/*            onValueChange={(v) => {*/}
+                        {/*                setFixBorerRenderingArtifacts(v)*/}
+                        {/*                if (v) {*/}
+                        {/*                    toast.success("Handling border rendering artifacts")*/}
+                        {/*                } else {*/}
+                        {/*                    toast.success("Border rendering artifacts are no longer handled")*/}
+                        {/*                }*/}
+                        {/*            }}*/}
+                        {/*        />*/}
+                        {/*    </SettingsCard>*/}
 
-                        </TabsContent>
+                        {/*</TabsContent>*/}
 
                         {tab !== "browser-client" && <div className="mt-4">
                             <Field.Submit role="save" intent="white" rounded loading={isPending}>Save</Field.Submit>

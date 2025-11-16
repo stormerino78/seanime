@@ -64,6 +64,9 @@ export default function Page() {
         onProviderSetup,
         onCanPlay,
         playNextEpisode,
+        playPreviousEpisode,
+        hasPreviousEpisode,
+        hasNextEpisode,
         onPlayFile,
         isCodecSupported,
         setStreamType,
@@ -235,7 +238,7 @@ export default function Page() {
                                 type: mediaContainer?.mediaInfo?.extension === "mp4" ? "video/mp4" :
                                     mediaContainer?.mediaInfo?.extension === "avi" ? "video/x-msvideo" : "video/webm",
                             } : url}
-                            isPlaybackError={isError}
+                            isPlaybackError={isError ? "Playback error" : undefined}
                             isLoading={isMediaContainerLoading}
                             playerRef={playerRef}
                             poster={episodes?.find(n => n.localFile?.path === mediaContainer?.filePath)?.episodeMetadata?.image ||
@@ -243,7 +246,8 @@ export default function Page() {
                             onProviderChange={onProviderChange}
                             onProviderSetup={onProviderSetup}
                             onCanPlay={onCanPlay}
-                            onGoToNextEpisode={playNextEpisode}
+                            onGoToNextEpisode={hasNextEpisode ? playNextEpisode : undefined}
+                            onGoToPreviousEpisode={hasPreviousEpisode ? playPreviousEpisode : undefined}
                             tracks={subtitles?.map((sub) => ({
                                 src: subtitleEndpointUri + sub.link,
                                 label: sub.title || sub.language,
@@ -273,6 +277,7 @@ export default function Page() {
                                     onPlayFile(episode.localFile?.path || "")
                                 }
                             }}
+                            description={episode?.episodeMetadata?.summary || episode?.episodeMetadata?.overview}
                             isWatched={!!progress && progress >= episode?.progressNumber}
                             isFiller={episode.episodeMetadata?.isFiller}
                             isSelected={episode.localFile?.path === filePath}

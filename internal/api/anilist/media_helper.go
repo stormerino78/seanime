@@ -1,8 +1,9 @@
 package anilist
 
 import (
-	"github.com/samber/lo"
 	"seanime/internal/util/comparison"
+
+	"github.com/samber/lo"
 )
 
 func (m *BaseAnime) GetTitleSafe() string {
@@ -180,6 +181,13 @@ func (m *BaseAnime) GetCurrentEpisodeCount() int {
 
 	return ceil
 }
+func (m *BaseAnime) GetCurrentEpisodeCountOrNil() *int {
+	n := m.GetCurrentEpisodeCount()
+	if n == -1 {
+		return nil
+	}
+	return &n
+}
 
 // GetTotalEpisodeCount returns the total episode number for that media and -1 if it doesn't have one
 func (m *BaseAnime) GetTotalEpisodeCount() int {
@@ -188,6 +196,11 @@ func (m *BaseAnime) GetTotalEpisodeCount() int {
 		ceil = *m.Episodes
 	}
 	return ceil
+}
+
+// GetTotalEpisodeCount returns the total episode number for that media and -1 if it doesn't have one
+func (m *BaseAnime) GetTotalEpisodeCountOrNil() *int {
+	return m.Episodes
 }
 
 // GetPossibleSeasonNumber returns the possible season number for that media and -1 if it doesn't have one.
@@ -515,6 +528,88 @@ func (m *CompleteAnime) ToBaseAnime() *BaseAnime {
 		StartDate:         startDate,
 		EndDate:           endDate,
 		NextAiringEpisode: nextAiringEpisode,
+	}
+}
+
+// ToCompleteAnime returns a CompleteAnime without relations.
+func (m *BaseAnime) ToCompleteAnime() *CompleteAnime {
+	if m == nil {
+		return nil
+	}
+
+	var trailer *CompleteAnime_Trailer
+	if m.GetTrailer() != nil {
+		trailer = &CompleteAnime_Trailer{
+			ID:        m.GetTrailer().GetID(),
+			Site:      m.GetTrailer().GetSite(),
+			Thumbnail: m.GetTrailer().GetThumbnail(),
+		}
+	}
+
+	var nextAiringEpisode *CompleteAnime_NextAiringEpisode
+	if m.GetNextAiringEpisode() != nil {
+		nextAiringEpisode = &CompleteAnime_NextAiringEpisode{
+			AiringAt:        m.GetNextAiringEpisode().GetAiringAt(),
+			TimeUntilAiring: m.GetNextAiringEpisode().GetTimeUntilAiring(),
+			Episode:         m.GetNextAiringEpisode().GetEpisode(),
+		}
+	}
+
+	var startDate *CompleteAnime_StartDate
+	if m.GetStartDate() != nil {
+		startDate = &CompleteAnime_StartDate{
+			Year:  m.GetStartDate().GetYear(),
+			Month: m.GetStartDate().GetMonth(),
+			Day:   m.GetStartDate().GetDay(),
+		}
+	}
+
+	var endDate *CompleteAnime_EndDate
+	if m.GetEndDate() != nil {
+		endDate = &CompleteAnime_EndDate{
+			Year:  m.GetEndDate().GetYear(),
+			Month: m.GetEndDate().GetMonth(),
+			Day:   m.GetEndDate().GetDay(),
+		}
+	}
+
+	return &CompleteAnime{
+		ID:              m.GetID(),
+		IDMal:           m.GetIDMal(),
+		SiteURL:         m.GetSiteURL(),
+		Format:          m.GetFormat(),
+		Episodes:        m.GetEpisodes(),
+		Status:          m.GetStatus(),
+		Synonyms:        m.GetSynonyms(),
+		BannerImage:     m.GetBannerImage(),
+		Season:          m.GetSeason(),
+		SeasonYear:      m.GetSeasonYear(),
+		Type:            m.GetType(),
+		IsAdult:         m.GetIsAdult(),
+		CountryOfOrigin: m.GetCountryOfOrigin(),
+		Genres:          m.GetGenres(),
+		Duration:        m.GetDuration(),
+		Description:     m.GetDescription(),
+		MeanScore:       m.GetMeanScore(),
+		Trailer:         trailer,
+		Title: &CompleteAnime_Title{
+			UserPreferred: m.GetTitle().GetUserPreferred(),
+			Romaji:        m.GetTitle().GetRomaji(),
+			English:       m.GetTitle().GetEnglish(),
+			Native:        m.GetTitle().GetNative(),
+		},
+		CoverImage: &CompleteAnime_CoverImage{
+			ExtraLarge: m.GetCoverImage().GetExtraLarge(),
+			Large:      m.GetCoverImage().GetLarge(),
+			Medium:     m.GetCoverImage().GetMedium(),
+			Color:      m.GetCoverImage().GetColor(),
+		},
+		StartDate:         startDate,
+		EndDate:           endDate,
+		NextAiringEpisode: nextAiringEpisode,
+		Relations: &CompleteAnime_Relations{
+			Edges: make([]*CompleteAnime_Relations_Edges, 0),
+		},
 	}
 }
 

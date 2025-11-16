@@ -20,17 +20,19 @@ import {
     __seaMediaPlayer_autoPlayAtom,
     __seaMediaPlayer_autoSkipIntroOutroAtom,
     __seaMediaPlayer_discreteControlsAtom,
+    __seaMediaPlayer_isFullscreenAtom,
     __seaMediaPlayer_mutedAtom,
     __seaMediaPlayer_volumeAtom,
 } from "@/app/(main)/_features/sea-media-player/sea-media-player.atoms"
 import { useServerStatus } from "@/app/(main)/_hooks/use-server-status"
 import { LuffyError } from "@/components/shared/luffy-error"
 import { vidstackLayoutIcons } from "@/components/shared/vidstack"
-import { Button } from "@/components/ui/button"
+import { Button, IconButton } from "@/components/ui/button"
 import { cn } from "@/components/ui/core/styling"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Skeleton } from "@/components/ui/skeleton"
 import { logger } from "@/lib/helpers/debug"
+import { __isDesktop__ } from "@/types/constants"
 import {
     MediaCanPlayDetail,
     MediaCanPlayEvent,
@@ -49,17 +51,19 @@ import {
     type TrackProps,
 } from "@vidstack/react"
 import { DefaultVideoLayout, DefaultVideoLayoutProps } from "@vidstack/react/player/layouts/default"
-import { useAtomValue } from "jotai"
+import { useAtomValue, useSetAtom } from "jotai"
 import { useAtom } from "jotai/react"
+import capitalize from "lodash/capitalize"
 import mousetrap from "mousetrap"
-import Image from "next/image"
 import React from "react"
+import { ImSpinner2 } from "react-icons/im"
+import { LuSkipBack, LuSkipForward } from "react-icons/lu"
 
 export type SeaMediaPlayerProps = {
     url?: string | { src: string, type: string }
     poster?: string
     isLoading?: boolean
-    isPlaybackError?: boolean
+    isPlaybackError?: string
     playerRef: React.RefObject<MediaPlayerInstance>
     onProviderChange?: (provider: MediaProviderAdapter | null, e: MediaProviderChangeEvent) => void
     onProviderSetup?: (provider: MediaProviderAdapter, e: MediaProviderSetupEvent) => void
@@ -72,7 +76,7 @@ export type SeaMediaPlayerProps = {
     videoLayoutSlots?: Omit<DefaultVideoLayoutProps["slots"], "settingsMenuEndItems">
     settingsItems?: React.ReactElement
     loadingText?: React.ReactNode
-    onGoToNextEpisode: () => void
+    onGoToNextEpisode?: () => void
     onGoToPreviousEpisode?: () => void
     mediaInfoDuration?: number
 }
@@ -144,8 +148,12 @@ export function SeaMediaPlayer(props: SeaMediaPlayerProps) {
     const canPlayRef = React.useRef<boolean>(false)
     const previousUrlRef = React.useRef<string | { src: string, type: string } | undefined>(undefined)
 
+    const setIsFullscreen = useSetAtom(__seaMediaPlayer_isFullscreenAtom)
+
     // Track last focused element
     const lastFocusedElementRef = React.useRef<HTMLElement | null>(null)
+    // Track fullscreen state
+    const wasFullscreenRef = React.useRef<boolean>(false)
 
     /** AniSkip **/
     const { data: aniSkipData } = useSkipData(media?.idMal, progress.currentEpisodeNumber ?? -1)
@@ -306,7 +314,7 @@ export function SeaMediaPlayer(props: SeaMediaPlayerProps) {
         _onEnded?.(e)
 
         if (autoNext && !wentToNextEpisodeRef.current) {
-            onGoToNextEpisode()
+            onGoToNextEpisode?.()
             wentToNextEpisodeRef.current = true
         }
     }
@@ -324,6 +332,16 @@ export function SeaMediaPlayer(props: SeaMediaPlayerProps) {
         _onCanPlay?.(e, event)
 
         canPlayRef.current = true
+
+        if (__isDesktop__ && wentToNextEpisodeRef.current && wasFullscreenRef.current) {
+            logger("MEDIA PLAYER").info("Restoring fullscreen")
+            try {
+                playerRef.current?.enterFullscreen()
+                playerRef.current?.el?.focus()
+            }
+            catch {
+            }
+        }
 
         wentToNextEpisodeRef.current = false
 
@@ -474,7 +492,7 @@ export function SeaMediaPlayer(props: SeaMediaPlayerProps) {
                             <p>Next Episode</p>
                         </>
                     ),
-                    onSelect: () => onGoToNextEpisode(),
+                    onSelect: () => onGoToNextEpisode?.(),
                 },
                 {
                     id: "previous-episode",
@@ -499,8 +517,12 @@ export function SeaMediaPlayer(props: SeaMediaPlayerProps) {
     return (
         <>
             <div data-sea-media-player-container className="aspect-video relative w-full self-start mx-auto">
-                {isPlaybackError ? (
-                    <LuffyError title="Playback Error" />
+                {(!!isPlaybackError?.length) ? (
+                    <LuffyError title="Oops!">
+                        <p className="max-w-md">
+                            {capitalize(isPlaybackError)}
+                        </p>
+                    </LuffyError>
                 ) : (!!url && !isLoading) ? (
                     <MediaPlayer
                         data-sea-media-player
@@ -517,6 +539,10 @@ export function SeaMediaPlayer(props: SeaMediaPlayerProps) {
                         onProviderChange={onProviderChange}
                         onMediaEnterFullscreenRequest={onMediaEnterFullscreenRequest}
                         onFullscreenChange={(isFullscreen: boolean, event: MediaFullscreenChangeEvent) => {
+                            setIsFullscreen(isFullscreen)
+                            // Track fullscreen state
+                            wasFullscreenRef.current = isFullscreen
+
                             if (isFullscreen) {
                                 // Store the currently focused element
                                 lastFocusedElementRef.current = document.activeElement as HTMLElement
@@ -571,6 +597,26 @@ export function SeaMediaPlayer(props: SeaMediaPlayerProps) {
                             icons={vidstackLayoutIcons}
                             slots={{
                                 ...videoLayoutSlots,
+                                beforeMuteButton: (
+                                    <div className="flex items-center gap-1">
+                                        {onGoToPreviousEpisode && (
+                                            <IconButton
+                                                intent="white-basic"
+                                                size="md"
+                                                onClick={onGoToPreviousEpisode}
+                                                aria-label="Previous Episode"
+                                                icon={<LuSkipBack className="text-3xl" />}
+                                            />
+                                        )}
+                                        {onGoToNextEpisode && <IconButton
+                                            intent="white-basic"
+                                            size="md"
+                                            onClick={onGoToNextEpisode}
+                                            aria-label="Next Episode"
+                                            icon={<LuSkipForward className="text-3xl" />}
+                                        />}
+                                    </div>
+                                ),
                                 settingsMenuEndItems: <>
                                     {settingsItems}
                                     <SeaMediaPlayerPlaybackSubmenu />
@@ -607,15 +653,7 @@ export function SeaMediaPlayer(props: SeaMediaPlayerProps) {
                     >
                         <LoadingSpinner
                             spinner={
-                                <div className="w-16 h-16 lg:w-[100px] lg:h-[100px] relative">
-                                    <Image
-                                        src="/logo_2.png"
-                                        alt="Loading..."
-                                        priority
-                                        fill
-                                        className="animate-pulse"
-                                    />
-                                </div>
+                                <ImSpinner2 className="size-14 lg:size-20 text-white animate-spin" />
                             }
                         />
                         <div className="text-center text-xs lg:text-sm">

@@ -1,9 +1,9 @@
 package autoscanner
 
 import (
+	"context"
 	"errors"
-	"github.com/rs/zerolog"
-	"seanime/internal/api/metadata"
+	"seanime/internal/api/metadata_provider"
 	"seanime/internal/database/db"
 	"seanime/internal/database/db_bridge"
 	"seanime/internal/database/models"
@@ -16,6 +16,8 @@ import (
 	"seanime/internal/util"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -33,7 +35,7 @@ type (
 		wsEventManager   events.WSEventManagerInterface
 		db               *db.Database                   // Database instance is required to update the local files.
 		autoDownloader   *autodownloader.AutoDownloader // AutoDownloader instance is required to refresh queue.
-		metadataProvider metadata.Provider
+		metadataProvider metadata_provider.Provider
 		logsDir          string
 	}
 	NewAutoScannerOptions struct {
@@ -44,7 +46,7 @@ type (
 		Enabled          bool
 		AutoDownloader   *autodownloader.AutoDownloader
 		WaitTime         time.Duration
-		MetadataProvider metadata.Provider
+		MetadataProvider metadata_provider.Provider
 		LogsDir          string
 	}
 )
@@ -231,7 +233,7 @@ func (as *AutoScanner) scan() {
 		MatchingAlgorithm:  as.settings.ScannerMatchingAlgorithm,
 	}
 
-	allLfs, err := sc.Scan()
+	allLfs, err := sc.Scan(context.Background())
 	if err != nil {
 		if errors.Is(err, scanner.ErrNoLocalFiles) {
 			return

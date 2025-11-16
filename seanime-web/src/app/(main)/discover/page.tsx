@@ -1,9 +1,10 @@
 "use client"
+import { useListCustomSourceExtensions } from "@/api/hooks/extensions.hooks"
 import { useServerStatus } from "@/app/(main)/_hooks/use-server-status"
 import { DiscoverPageHeader } from "@/app/(main)/discover/_components/discover-page-header"
 import { DiscoverAiringSchedule } from "@/app/(main)/discover/_containers/discover-airing-schedule"
 import { DiscoverMissedSequelsSection } from "@/app/(main)/discover/_containers/discover-missed-sequels"
-import { DiscoverPastSeason } from "@/app/(main)/discover/_containers/discover-popular"
+import { DiscoverPastSeason, DiscoverThisSeason } from "@/app/(main)/discover/_containers/discover-popular"
 import { DiscoverTrending } from "@/app/(main)/discover/_containers/discover-trending"
 import { DiscoverTrendingCountry } from "@/app/(main)/discover/_containers/discover-trending-country"
 import { DiscoverTrendingMovies } from "@/app/(main)/discover/_containers/discover-trending-movies"
@@ -11,13 +12,15 @@ import { DiscoverUpcoming } from "@/app/(main)/discover/_containers/discover-upc
 import { __discord_pageTypeAtom } from "@/app/(main)/discover/_lib/discover.atoms"
 import { RecentReleases } from "@/app/(main)/schedule/_containers/recent-releases"
 import { PageWrapper } from "@/components/shared/page-wrapper"
+import { SeaLink } from "@/components/shared/sea-link"
 import { Button } from "@/components/ui/button"
 import { StaticTabs } from "@/components/ui/tabs"
-import { AnimatePresence, motion } from "framer-motion"
 import { useAtom } from "jotai/react"
+import { AnimatePresence, motion } from "motion/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import React from "react"
 import { FaSearch } from "react-icons/fa"
+import { MdDataSaverOn } from "react-icons/md"
 
 export const dynamic = "force-static"
 
@@ -29,6 +32,8 @@ export default function Page() {
     const [pageType, setPageType] = useAtom(__discord_pageTypeAtom)
     const searchParams = useSearchParams()
     const searchType = searchParams.get("type")
+
+    const { data: customSources } = useListCustomSourceExtensions()
 
     React.useEffect(() => {
         if (searchType) {
@@ -65,6 +70,19 @@ export default function Page() {
                             ]}
                         />
                     </div>
+                    {!!customSources?.length && <div data-discover-page-header-custom-source-container>
+                        <SeaLink href="/custom-sources">
+                            <Button
+                                leftIcon={<MdDataSaverOn className="text-lg" />}
+                                intent="gray-outline"
+                                // size="lg"
+                                className="rounded-full"
+                                onClick={() => router.push("/search")}
+                            >
+                                Custom sources
+                            </Button>
+                        </SeaLink>
+                    </div>}
                     <div data-discover-page-header-advanced-search-container>
                         <Button
                             leftIcon={<FaSearch />}
@@ -80,7 +98,7 @@ export default function Page() {
                 <AnimatePresence mode="wait" initial={false}>
                     {pageType === "anime" && <PageWrapper
                         key="anime"
-                        className="relative 2xl:order-first pb-10 pt-4"
+                        className="relative 2xl:order-first pb-10 pt-4 space-y-8"
                         {...{
                             initial: { opacity: 0, y: 60 },
                             animate: { opacity: 1, y: 0 },
@@ -92,21 +110,25 @@ export default function Page() {
                         data-discover-page-anime-container
                     >
                         <div className="space-y-2 z-[5] relative" data-discover-page-anime-trending-container>
-                            <h2>Trending this season</h2>
+                            <h2>Trending Right Now</h2>
                             <DiscoverTrending />
                         </div>
                         <RecentReleases />
                         <div className="space-y-2 z-[5] relative" data-discover-page-anime-highest-rated-container>
-                            <h2>Highest rated last season</h2>
+                            <h2>Top of the Season</h2>
+                            <DiscoverThisSeason />
+                        </div>
+                        <div className="space-y-2 z-[5] relative" data-discover-page-anime-highest-rated-container>
+                            <h2>Best of Last Season</h2>
                             <DiscoverPastSeason />
                         </div>
                         <DiscoverMissedSequelsSection />
                         <div className="space-y-2 z-[5] relative" data-discover-page-anime-upcoming-container>
-                            <h2>Upcoming</h2>
+                            <h2>Coming Soon</h2>
                             <DiscoverUpcoming />
                         </div>
                         <div className="space-y-2 z-[5] relative" data-discover-page-anime-trending-movies-container>
-                            <h2>Trending movies</h2>
+                            <h2>Trending Movies</h2>
                             <DiscoverTrendingMovies />
                         </div>
                         {/*<div className="space-y-2 z-[5] relative">*/}
@@ -148,7 +170,7 @@ export default function Page() {
                         {/*</div>*/}
                         <div className="space-y-2 z-[5] relative" data-discover-page-manga-trending-container>
                             <h2>Trending Manga</h2>
-                            <DiscoverTrendingCountry country="JP" />
+                            <DiscoverTrendingCountry country="JP" forDiscoverHeader />
                         </div>
                         <div className="space-y-2 z-[5] relative" data-discover-page-manga-trending-manhwa-container>
                             <h2>Trending Manhwa</h2>

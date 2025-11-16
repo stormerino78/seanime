@@ -2,6 +2,7 @@ package util
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -159,7 +160,10 @@ func Pluralize(count int, singular, plural string) string {
 // NormalizePath normalizes a path by converting it to lowercase and replacing backslashes with forward slashes
 // Warning: Do not use the returned string for anything filesystem related, only for comparison
 func NormalizePath(path string) (ret string) {
-	return strings.ToLower(filepath.ToSlash(path))
+	if runtime.GOOS == "windows" {
+		return strings.ToLower(filepath.ToSlash(path))
+	}
+	return filepath.ToSlash(path)
 }
 
 func Base64EncodeStr(str string) string {
@@ -255,4 +259,18 @@ func RandomStringWithAlphabet(length int, alphabet string) string {
 	}
 
 	return string(b)
+}
+
+func FileExt(str string) string {
+	lastDotIndex := strings.LastIndex(str, ".")
+	if lastDotIndex == -1 {
+		return ""
+	}
+	return str[lastDotIndex:]
+}
+
+func HashSHA256Hex(s string) string {
+	h := sha256.New()
+	h.Write([]byte(s))
+	return hex.EncodeToString(h.Sum(nil))
 }

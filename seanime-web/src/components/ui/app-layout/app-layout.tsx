@@ -1,5 +1,7 @@
 "use client"
+import { ElectronSidebarPaddingMacOS } from "@/app/(main)/_electron/electron-padding"
 import { TauriSidebarPaddingMacOS } from "@/app/(main)/_tauri/tauri-padding"
+import { __isDesktop__, __isElectronDesktop__, __isTauriDesktop__ } from "@/types/constants"
 import { cva, VariantProps } from "class-variance-authority"
 import * as React from "react"
 import { __AppSidebarContext } from "."
@@ -104,12 +106,14 @@ export const AppLayoutGridAnatomy = defineStyleAnatomy({
                 md: "md:grid md:space-y-0",
                 lg: "lg:grid lg:space-y-0",
                 xl: "xl:grid xl:space-y-0",
+                "2xl": "2xl:grid 2xl:space-y-0",
             },
             spacing: {
                 sm: "gap-2",
                 md: "gap-4",
                 lg: "gap-8",
                 xl: "gap-10",
+                "2xl": "gap-12",
             },
             cols: { 1: null, 2: null, 3: null, 4: null, 5: null, 6: null },
         },
@@ -172,7 +176,7 @@ export const AppLayout = React.forwardRef<HTMLDivElement, AppLayoutProps>((props
             ref={ref}
             className={cn(
                 AppLayoutAnatomy.root({ withSidebar, sidebarSize: ctx.size || sidebarSize }),
-                process.env.NEXT_PUBLIC_PLATFORM === "desktop" && "pt-4 select-none",
+                __isDesktop__ && "pt-4 select-none",
                 className,
             )}
             {...rest}
@@ -233,7 +237,8 @@ export const AppLayoutSidebar = React.forwardRef<HTMLElement, AppLayoutSidebarPr
             className={cn(AppLayoutSidebarAnatomy.root(), className)}
             {...rest}
         >
-            {process.env.NEXT_PUBLIC_PLATFORM === "desktop" && <TauriSidebarPaddingMacOS />}
+            {__isTauriDesktop__ && <TauriSidebarPaddingMacOS />}
+            {__isElectronDesktop__ && <ElectronSidebarPaddingMacOS />}
             {children}
         </aside>
     )

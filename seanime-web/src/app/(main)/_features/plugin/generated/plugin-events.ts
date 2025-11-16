@@ -68,6 +68,7 @@ export enum PluginServerEvents {
     DOMStopObserve = "dom:stop-observe",
     DOMCreate = "dom:create",
     DOMManipulate = "dom:manipulate",
+    DOMObserveInView = "dom:observe-in-view",
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -316,14 +317,13 @@ export function usePluginSendActionRenderAnimeLibraryDropdownItemsEvent() {
     }
 }
 
-export type Plugin_Client_ActionRenderEpisodeCardContextMenuItemsEventPayload = {}
+export type Plugin_Client_ActionRenderEpisodeCardContextMenuItemsEventPayload = {
+}
 
 export function usePluginSendActionRenderEpisodeCardContextMenuItemsEvent() {
     const { sendPluginMessage } = useWebsocketSender()
 
-    const sendActionRenderEpisodeCardContextMenuItemsEvent = useCallback((payload: Plugin_Client_ActionRenderEpisodeCardContextMenuItemsEventPayload,
-        extensionID?: string,
-    ) => {
+    const sendActionRenderEpisodeCardContextMenuItemsEvent = useCallback((payload: Plugin_Client_ActionRenderEpisodeCardContextMenuItemsEventPayload, extensionID?: string) => {
         sendPluginMessage(PluginClientEvents.ActionRenderEpisodeCardContextMenuItems, payload, extensionID)
     }, [])
 
@@ -332,14 +332,13 @@ export function usePluginSendActionRenderEpisodeCardContextMenuItemsEvent() {
     }
 }
 
-export type Plugin_Client_ActionRenderEpisodeGridItemMenuItemsEventPayload = {}
+export type Plugin_Client_ActionRenderEpisodeGridItemMenuItemsEventPayload = {
+}
 
 export function usePluginSendActionRenderEpisodeGridItemMenuItemsEvent() {
     const { sendPluginMessage } = useWebsocketSender()
 
-    const sendActionRenderEpisodeGridItemMenuItemsEvent = useCallback((payload: Plugin_Client_ActionRenderEpisodeGridItemMenuItemsEventPayload,
-        extensionID?: string,
-    ) => {
+    const sendActionRenderEpisodeGridItemMenuItemsEvent = useCallback((payload: Plugin_Client_ActionRenderEpisodeGridItemMenuItemsEventPayload, extensionID?: string) => {
         sendPluginMessage(PluginClientEvents.ActionRenderEpisodeGridItemMenuItems, payload, extensionID)
     }, [])
 
@@ -595,6 +594,7 @@ export type Plugin_Server_TrayIconEventPayload = {
     badgeIntent: string
     width: string
     minHeight: string
+    isDrawer: boolean
 }
 
 export function usePluginListenTrayIconEvent(cb: (payload: Plugin_Server_TrayIconEventPayload, extensionId: string) => void, extensionID: string) {
@@ -619,6 +619,7 @@ export function usePluginListenTrayBadgeUpdatedEvent(cb: (payload: Plugin_Server
 }
 
 export type Plugin_Server_TrayOpenEventPayload = {
+    extensionId: string
 }
 
 export function usePluginListenTrayOpenEvent(cb: (payload: Plugin_Server_TrayOpenEventPayload, extensionId: string) => void, extensionID: string) {
@@ -630,6 +631,7 @@ export function usePluginListenTrayOpenEvent(cb: (payload: Plugin_Server_TrayOpe
 }
 
 export type Plugin_Server_TrayCloseEventPayload = {
+    extensionId: string
 }
 
 export function usePluginListenTrayCloseEvent(cb: (payload: Plugin_Server_TrayCloseEventPayload, extensionId: string) => void, extensionID: string) {
@@ -763,9 +765,7 @@ export type Plugin_Server_ActionRenderEpisodeCardContextMenuItemsEventPayload = 
     items: any
 }
 
-export function usePluginListenActionRenderEpisodeCardContextMenuItemsEvent(cb: (payload: Plugin_Server_ActionRenderEpisodeCardContextMenuItemsEventPayload,
-    extensionId: string,
-) => void, extensionID: string) {
+export function usePluginListenActionRenderEpisodeCardContextMenuItemsEvent(cb: (payload: Plugin_Server_ActionRenderEpisodeCardContextMenuItemsEventPayload, extensionId: string) => void, extensionID: string) {
     return useWebsocketPluginMessageListener<Plugin_Server_ActionRenderEpisodeCardContextMenuItemsEventPayload>({
         extensionId: extensionID,
         type: PluginServerEvents.ActionRenderEpisodeCardContextMenuItems,
@@ -777,9 +777,7 @@ export type Plugin_Server_ActionRenderEpisodeGridItemMenuItemsEventPayload = {
     items: any
 }
 
-export function usePluginListenActionRenderEpisodeGridItemMenuItemsEvent(cb: (payload: Plugin_Server_ActionRenderEpisodeGridItemMenuItemsEventPayload,
-    extensionId: string,
-) => void, extensionID: string) {
+export function usePluginListenActionRenderEpisodeGridItemMenuItemsEvent(cb: (payload: Plugin_Server_ActionRenderEpisodeGridItemMenuItemsEventPayload, extensionId: string) => void, extensionID: string) {
     return useWebsocketPluginMessageListener<Plugin_Server_ActionRenderEpisodeGridItemMenuItemsEventPayload>({
         extensionId: extensionID,
         type: PluginServerEvents.ActionRenderEpisodeGridItemMenuItems,
@@ -968,6 +966,23 @@ export function usePluginListenDOMManipulateEvent(cb: (payload: Plugin_Server_DO
     return useWebsocketPluginMessageListener<Plugin_Server_DOMManipulateEventPayload>({
         extensionId: extensionID,
         type: PluginServerEvents.DOMManipulate,
+        onMessage: cb,
+    })
+}
+
+export type Plugin_Server_DOMObserveInViewEventPayload = {
+    selector: string
+    observerId: string
+    withInnerHTML: boolean
+    withOuterHTML: boolean
+    identifyChildren: boolean
+    margin: string
+}
+
+export function usePluginListenDOMObserveInViewEvent(cb: (payload: Plugin_Server_DOMObserveInViewEventPayload, extensionId: string) => void, extensionID: string) {
+    return useWebsocketPluginMessageListener<Plugin_Server_DOMObserveInViewEventPayload>({
+        extensionId: extensionID,
+        type: PluginServerEvents.DOMObserveInView,
         onMessage: cb,
     })
 }

@@ -2,7 +2,7 @@ import { AL_MangaDetailsById_Media, HibikeManga_ChapterDetails, Manga_Entry, Man
 import { useEmptyMangaEntryCache } from "@/api/hooks/manga.hooks"
 import { SeaCommandInjectableItem, useSeaCommandInject } from "@/app/(main)/_features/sea-command/use-inject"
 import { ChapterListBulkActions } from "@/app/(main)/manga/_containers/chapter-list/_components/chapter-list-bulk-actions"
-import { DownloadedChapterList } from "@/app/(main)/manga/_containers/chapter-list/downloaded-chapter-list"
+import { DownloadedChapterList, manga_downloadedChapterContainerAtom } from "@/app/(main)/manga/_containers/chapter-list/downloaded-chapter-list"
 import { MangaManualMappingModal } from "@/app/(main)/manga/_containers/chapter-list/manga-manual-mapping-modal"
 import { ChapterReaderDrawer } from "@/app/(main)/manga/_containers/chapter-reader/chapter-reader-drawer"
 import { __manga_selectedChapterAtom } from "@/app/(main)/manga/_lib/handle-chapter-reader"
@@ -10,20 +10,21 @@ import { useHandleMangaChapters } from "@/app/(main)/manga/_lib/handle-manga-cha
 import { useHandleDownloadMangaChapter } from "@/app/(main)/manga/_lib/handle-manga-downloads"
 import { getChapterNumberFromChapter, useMangaChapterListRowSelection, useMangaDownloadDataUtils } from "@/app/(main)/manga/_lib/handle-manga-utils"
 import { LANGUAGES_LIST } from "@/app/(main)/manga/_lib/language-map"
-import { primaryPillCheckboxClasses } from "@/components/shared/classnames"
+import { monochromeCheckboxClasses } from "@/components/shared/classnames"
 import { ConfirmationDialog, useConfirmationDialog } from "@/components/shared/confirmation-dialog"
 import { LuffyError } from "@/components/shared/luffy-error"
 import { Button, IconButton } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { useUpdateEffect } from "@/components/ui/core/hooks"
 import { DataGrid, defineDataGridColumns } from "@/components/ui/datagrid"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Select } from "@/components/ui/select"
-import { useSetAtom } from "jotai/react"
+import { useAtom, useSetAtom } from "jotai/react"
 import React from "react"
 import { FaRedo } from "react-icons/fa"
 import { GiOpenBook } from "react-icons/gi"
-import { HiOutlineSearchCircle } from "react-icons/hi"
 import { IoBookOutline, IoLibrary } from "react-icons/io5"
+import { LuSearch } from "react-icons/lu"
 import { MdOutlineDownloadForOffline, MdOutlineOfflinePin } from "react-icons/md"
 
 type ChapterListProps = {
@@ -102,6 +103,7 @@ export function ChapterList(props: ChapterListProps) {
     const {
         isChapterQueued,
         isChapterDownloaded,
+        isChapterLocal,
     } = useMangaDownloadDataUtils(downloadData, downloadDataLoading)
 
     const { inject, remove } = useSeaCommandInject()
@@ -168,7 +170,7 @@ export function ChapterList(props: ChapterListProps) {
             cell: ({ row }) => {
                 return (
                     <div className="flex justify-end gap-2 items-center w-full">
-                        {(!isChapterDownloaded(row.original) && !isChapterQueued(row.original)) && <IconButton
+                        {(!isChapterLocal(row.original) && !isChapterDownloaded(row.original) && !isChapterQueued(row.original)) && <IconButton
                             intent="gray-basic"
                             size="sm"
                             disabled={isSendingDownloadRequest}
@@ -200,9 +202,9 @@ export function ChapterList(props: ChapterListProps) {
     /**
      * Set "showUnreadChapter" state if there are unread chapters
      */
-    React.useEffect(() => {
+    useUpdateEffect(() => {
         setShowUnreadChapter(!!unreadChapters.length)
-    }, [unreadChapters])
+    }, [unreadChapters?.length])
 
     /**
      * Filter chapters based on state
@@ -214,9 +216,8 @@ export function ChapterList(props: ChapterListProps) {
         }
         return d
     }, [
-        showUnreadChapter, unreadChapters, allChapters, showDownloadedChapters, isChapterDownloaded, isChapterQueued, downloadData, selectedExtension,
+        showUnreadChapter, unreadChapters, allChapters, showDownloadedChapters, downloadData, selectedExtension,
     ])
-
 
     const {
         rowSelectedChapters,
@@ -228,7 +229,7 @@ export function ChapterList(props: ChapterListProps) {
 
     React.useEffect(() => {
         resetRowSelection()
-    }, [chapters])
+    }, [])
 
     // Inject chapter list command
     React.useEffect(() => {
@@ -303,6 +304,8 @@ export function ChapterList(props: ChapterListProps) {
         return () => remove("manga-chapters")
     }, [chapterContainer?.chapters, unreadChapters, mediaId])
 
+    const [downloadedChapterContainer] = useAtom(manga_downloadedChapterContainerAtom)
+
     if (providerExtensionsLoading) return <LoadingSpinner />
 
     return (
@@ -339,7 +342,7 @@ export function ChapterList(props: ChapterListProps) {
 
                 <MangaManualMappingModal entry={entry}>
                     <Button
-                        leftIcon={<HiOutlineSearchCircle className="text-lg" />}
+                        leftIcon={<LuSearch className="text-lg" />}
                         intent="gray-outline"
                         size="sm"
                     >
@@ -386,7 +389,17 @@ export function ChapterList(props: ChapterListProps) {
             )}
 
             {(chapterContainerLoading || isClearingMangaCache) ? <LoadingSpinner /> : (
-                chapterContainerError ? <LuffyError title="Oops!"><p>No chapters found</p></LuffyError> : (
+                chapterContainerError ? <LuffyError title="No chapters found">
+                    <MangaManualMappingModal entry={entry}>
+                        <Button
+                            leftIcon={<LuSearch className="text-lg" />}
+                            intent="gray-outline"
+                            size="md"
+                        >
+                            Manual match
+                        </Button>
+                    </MangaManualMappingModal>
+                </LuffyError> : (
                     <>
 
                         {chapterContainer?.chapters?.length === 0 && (
@@ -425,15 +438,15 @@ export function ChapterList(props: ChapterListProps) {
                                             value={showUnreadChapter}
                                             onValueChange={v => setShowUnreadChapter(v as boolean)}
                                             fieldClass="w-fit"
-                                            {...primaryPillCheckboxClasses}
+                                            {...monochromeCheckboxClasses}
                                         />
-                                        <Checkbox
+                                        {selectedProvider !== "local-manga" && <Checkbox
                                             label={<span className="flex gap-2 items-center"><IoLibrary /> Show downloaded</span>}
                                             value={showDownloadedChapters}
                                             onValueChange={v => setShowDownloadedChapters(v as boolean)}
                                             fieldClass="w-fit"
-                                            {...primaryPillCheckboxClasses}
-                                        />
+                                            {...monochromeCheckboxClasses}
+                                        />}
                                     </div>
 
                                     <ChapterListBulkActions
@@ -479,14 +492,15 @@ export function ChapterList(props: ChapterListProps) {
                             </>
                         )}
 
-                        {chapterContainer && <ChapterReaderDrawer
-                            entry={entry}
-                            chapterContainer={chapterContainer}
-                            chapterIdToNumbersMap={chapterIdToNumbersMap}
-                        />}
                     </>
                 )
             )}
+
+            {(chapterContainer || downloadedChapterContainer) && <ChapterReaderDrawer
+                entry={entry}
+                chapterContainer={chapterContainer || downloadedChapterContainer!}
+                chapterIdToNumbersMap={chapterIdToNumbersMap}
+            />}
 
             <DownloadedChapterList
                 entry={entry}

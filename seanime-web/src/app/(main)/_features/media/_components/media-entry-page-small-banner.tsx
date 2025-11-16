@@ -1,7 +1,8 @@
 import { TRANSPARENT_SIDEBAR_BANNER_IMG_STYLE } from "@/app/(main)/_features/custom-ui/styles"
+import { SeaImage } from "@/components/shared/sea-image"
 import { cn } from "@/components/ui/core/styling"
 import { useThemeSettings } from "@/lib/theme/hooks"
-import Image from "next/image"
+import { __isDesktop__ } from "@/types/constants"
 import React from "react"
 
 type MediaEntryPageSmallBannerProps = {
@@ -23,7 +24,7 @@ export function MediaEntryPageSmallBanner(props: MediaEntryPageSmallBannerProps)
                 data-media-entry-page-small-banner
                 className={cn(
                     "h-[30rem] w-full flex-none object-cover object-center absolute -top-[5rem] overflow-hidden bg-[--background]",
-                    (ts.hideTopNavbar || process.env.NEXT_PUBLIC_PLATFORM === "desktop") && "h-[27rem]",
+                    (ts.hideTopNavbar || __isDesktop__) && "h-[27rem]",
                     !ts.disableSidebarTransparency && TRANSPARENT_SIDEBAR_BANNER_IMG_STYLE,
                 )}
             >
@@ -32,7 +33,7 @@ export function MediaEntryPageSmallBanner(props: MediaEntryPageSmallBannerProps)
                     className="w-full absolute z-[2] top-0 h-[8rem] opacity-40 bg-gradient-to-b from-[--background] to-transparent via"
                 />
                 <div data-media-entry-page-small-banner-image-container className="absolute w-full h-full">
-                    {(!!bannerImage) && <Image
+                    {(!!bannerImage) && <SeaImage
                         data-media-entry-page-small-banner-image
                         src={bannerImage || ""}
                         alt="banner image"

@@ -78,6 +78,7 @@ func (t *TrayManager) sendIconToClient() {
 			BadgeIntent:   tray.BadgeIntent,
 			Width:         tray.Width,
 			MinHeight:     tray.MinHeight,
+			IsDrawer:      tray.IsDrawer,
 		})
 	}
 }
@@ -97,6 +98,7 @@ type Tray struct {
 	BadgeIntent string `json:"badgeIntent"`
 	Width       string `json:"width,omitempty"`
 	MinHeight   string `json:"minHeight,omitempty"`
+	IsDrawer    bool   `json:"isDrawer,omitempty"`
 
 	renderFunc  func(goja.FunctionCall) goja.Value
 	trayManager *TrayManager
@@ -132,6 +134,9 @@ func (t *TrayManager) jsNewTray(call goja.FunctionCall) goja.Value {
 		if propsObj["tooltipText"] != nil {
 			tray.TooltipText, _ = propsObj["tooltipText"].(string)
 		}
+		if propsObj["isDrawer"] != nil {
+			tray.IsDrawer, _ = propsObj["isDrawer"].(bool)
+		}
 		if propsObj["width"] != nil {
 			tray.Width, _ = propsObj["width"].(string)
 		}
@@ -159,6 +164,7 @@ func (t *TrayManager) jsNewTray(call goja.FunctionCall) goja.Value {
 	_ = trayObj.Set("stack", t.componentManager.jsStack)
 	_ = trayObj.Set("text", t.componentManager.jsText)
 	_ = trayObj.Set("button", t.componentManager.jsButton)
+	_ = trayObj.Set("anchor", t.componentManager.jsAnchor)
 	_ = trayObj.Set("input", t.componentManager.jsInput)
 	_ = trayObj.Set("radioGroup", t.componentManager.jsRadioGroup)
 	_ = trayObj.Set("switch", t.componentManager.jsSwitch)
@@ -206,7 +212,9 @@ func (t *Tray) jsUpdate(call goja.FunctionCall) goja.Value {
 //	Example:
 //	tray.open()
 func (t *Tray) jsOpen(call goja.FunctionCall) goja.Value {
-	t.trayManager.ctx.SendEventToClient(ServerTrayOpenEvent, ServerTrayOpenEventPayload{})
+	t.trayManager.ctx.SendEventToClient(ServerTrayOpenEvent, ServerTrayOpenEventPayload{
+		ExtensionID: t.trayManager.ctx.ext.ID,
+	})
 	return goja.Undefined()
 }
 
@@ -215,7 +223,9 @@ func (t *Tray) jsOpen(call goja.FunctionCall) goja.Value {
 //	Example:
 //	tray.close()
 func (t *Tray) jsClose(call goja.FunctionCall) goja.Value {
-	t.trayManager.ctx.SendEventToClient(ServerTrayCloseEvent, ServerTrayCloseEventPayload{})
+	t.trayManager.ctx.SendEventToClient(ServerTrayCloseEvent, ServerTrayCloseEventPayload{
+		ExtensionID: t.trayManager.ctx.ext.ID,
+	})
 	return goja.Undefined()
 }
 

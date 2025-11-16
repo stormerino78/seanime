@@ -9,6 +9,7 @@ import React from "react"
 import { UseFormReturn } from "react-hook-form"
 import { FcFolder } from "react-icons/fc"
 import { SiBittorrent } from "react-icons/si"
+import { toast } from "sonner"
 
 const torrentstreamSchema = defineSchema(({ z }) => z.object({
     enabled: z.boolean(),
@@ -65,6 +66,7 @@ export function TorrentstreamSettings(props: TorrentstreamSettingsProps) {
                             {
                                 onSuccess: () => {
                                     formRef.current?.reset(formRef.current.getValues())
+                                    toast.success("Settings saved")
                                 },
                             },
                         )
@@ -96,12 +98,12 @@ export function TorrentstreamSettings(props: TorrentstreamSettingsProps) {
                     />
                 </SettingsCard>
 
-                <SettingsCard title="Integration">
+                <SettingsCard title="My library">
                     <Field.Switch
                         side="right"
                         name="includeInLibrary"
                         label="Include in library"
-                        help="Shows that are currently being watched but haven't been downloaded will default to the streaming view and appear in your library."
+                        help="Add non-downloaded shows that are in your currently watching list to 'My library' for streaming"
                     />
                 </SettingsCard>
 

@@ -1,4 +1,9 @@
 /**
+ * Is offline
+ */
+declare const __isOffline__: boolean
+
+/**
  * Fetch
  */
 declare function fetch(url: string, options?: FetchOptions): Promise<FetchResponse>
@@ -81,6 +86,8 @@ declare function $toBytes(value: any): Uint8Array
  */
 declare function $sleep(milliseconds: number): void
 
+declare function $await<T>(promise: Promise<T>): void
+
 /**
  *
  * @param model
@@ -141,6 +148,14 @@ declare namespace $habari {
      * @returns The metadata
      */
     function parse(filename: string): Metadata
+}
+
+/**
+ * GoFeed
+ */
+
+declare namespace $goFeed {
+    function parse(str: string): Record<string, any>
 }
 
 /**
@@ -312,19 +327,6 @@ declare function LoadDoc(html: string): DocSelectionFunction;
 declare interface DocSelectionFunction {
     (selector: string): DocSelection;
 }
-
-
-/**
- * Torrent
- */
-
-/**
- * Get a magnet link from a base64 encoded torrent data
- * @param b64 - The base64 encoded torrent data
- * @returns The magnet link
- * @deprecated This function will be removed soon, use $torrentUtils.getMagnetLinkFromTorrentData instead
- */
-declare function getMagnetLinkFromTorrentData(b64: string): string
 
 /**
  * Torrent utils

@@ -6,7 +6,7 @@ import { EmblaCarouselType } from "embla-carousel"
 import AutoScroll from "embla-carousel-autoplay"
 import useEmblaCarousel, { UseEmblaCarouselType } from "embla-carousel-react"
 import * as React from "react"
-import { Button, ButtonProps, IconButton } from "../button"
+import { IconButton } from "../button"
 import { cn, defineStyleAnatomy } from "../core/styling"
 
 /* -------------------------------------------------------------------------------------------------
@@ -94,7 +94,7 @@ export const CarouselAnatomy = defineStyleAnatomy({
 
 export const __CarouselContext = React.createContext<CarouselContextProps | null>(null)
 
-function useCarousel() {
+export function useCarousel() {
     const context = React.useContext(__CarouselContext)
 
     if (!context) {
@@ -118,6 +118,7 @@ export type CarouselProps = {
     setApi?: (api: EmblaCarouselType) => void
     autoScroll?: boolean
     autoScrollDelay?: number
+    carouselButtonContainerClass?: string
 }
 
 type CarouselContextProps = {
@@ -141,6 +142,7 @@ export const Carousel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HT
         children,
         autoScroll,
         autoScrollDelay = 5000,
+        carouselButtonContainerClass,
         ...rest
     } = props
 
@@ -230,7 +232,7 @@ export const Carousel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HT
                 {...rest}
             >
                 {children}
-                <CarouselButtons />
+                <CarouselButtons containerClass={carouselButtonContainerClass} />
             </div>
         </__CarouselContext.Provider>
     )
@@ -239,12 +241,14 @@ Carousel.displayName = "Carousel"
 
 type CarouselButtonsProps = {
     children?: React.ReactNode
+    containerClass?: string
 }
 
 export function CarouselButtons(props: CarouselButtonsProps) {
 
     const {
         children,
+        containerClass,
         ...rest
     } = props
 
@@ -252,7 +256,7 @@ export function CarouselButtons(props: CarouselButtonsProps) {
 
     return (
         <>
-            {scrollSnaps.length > 30 && <div className="flex gap-2 absolute top-[-3.5rem] right-0">
+            {scrollSnaps.length > 30 && <div className={cn("flex gap-2 absolute top-[-2rem] right-0", containerClass)}>
                 <CarouselPrevious />
                 <CarouselNext />
             </div>}
@@ -424,20 +428,22 @@ export const useDotButton = (): UseDotButtonType => {
     }
 }
 
-const DotButton = (props: ButtonProps) => {
-    const { children, className, ...rest } = props
+const DotButton = (props: React.ComponentPropsWithoutRef<"div">) => {
+    const { children, className, onClick, ...rest } = props
 
     return (
-        <Button
-            size="xs"
+        <div
             className={cn(
-                "rounded-full size-4 p-0 bg-gray-600 dark:bg-opacity-50", className,
+                "rounded-full px-[2.5px] size-5 lg:w-5 lg:h-4 group/dot-button flex items-center justify-center cursor-pointer",
             )}
-            intent="gray-subtle"
-            {...rest}
+            onClick={onClick}
         >
-            {children}
-        </Button>
+            {/* {children} */}
+            <div
+                className={cn(
+                    "cursor-pointer w-full lg:h-2 lg:group-hover/dot-button:h-3 transition-all duration-300 rounded-full bg-gray-600 dark:bg-opacity-50",
+                    className)} {...rest} />
+        </div>
     )
 }
 
@@ -453,7 +459,7 @@ export const CarouselDotButtons = (props: { className?: string, flag?: any }) =>
     if (scrollSnaps.length > 30) return null
 
     return (
-        <div className={cn("absolute -top-8 right-0 hidden md:flex gap-2", props.className)}>
+        <div className={cn("absolute -top-8 right-0 hidden md:flex items-center z-[10]", props.className)}>
             {scrollSnaps.map((_, index) => (
                 <DotButton
                     key={index}

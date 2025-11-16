@@ -13,24 +13,30 @@ import type {
     Anime_AutoDownloaderRuleEpisodeType,
     Anime_AutoDownloaderRuleTitleComparisonType,
     Anime_LocalFileMetadata,
+    Anime_PlaylistEpisode,
     ChapterDownloader_DownloadID,
     Continuity_UpdateWatchHistoryItemOptions,
     Debrid_TorrentItem,
     DebridClient_CancelStreamOptions,
     DebridClient_StreamPlaybackType,
     HibikeTorrent_AnimeTorrent,
+    HibikeTorrent_BatchEpisodeFiles,
+    LibraryExplorer_SuperUpdateFileOptions,
     Mediastream_StreamType,
     Models_AnilistSettings,
     Models_DebridSettings,
     Models_DiscordSettings,
+    Models_HomeItem,
     Models_LibrarySettings,
     Models_MangaSettings,
     Models_MediaPlayerSettings,
     Models_MediastreamSettings,
+    Models_NakamaSettings,
     Models_NotificationSettings,
     Models_Theme,
     Models_TorrentSettings,
     Models_TorrentstreamSettings,
+    Nakama_WatchPartySessionSettings,
     Report_ClickLog,
     Report_ConsoleLog,
     Report_NetworkLog,
@@ -119,6 +125,7 @@ export type AnilistListAnime_Variables = {
     seasonYear?: number
     format?: AL_MediaFormat
     isAdult?: boolean
+    countryOfOrigin?: string
 }
 
 /**
@@ -136,6 +143,24 @@ export type AnilistListRecentAiringAnime_Variables = {
     airingAt_lesser?: number
     notYetAired?: boolean
     sort?: Array<AL_AiringSort>
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// anime
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/handlers/anime.go
+ * - Filename: anime.go
+ * - Endpoint: /api/v1/anime/episode-collection/{id}
+ * @description
+ * Route gets list of main episodes
+ */
+export type GetAnimeEpisodeCollection_Variables = {
+    /**
+     *  AniList anime media ID
+     */
+    id: number
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -401,6 +426,38 @@ export type GetContinuityWatchHistoryItem_Variables = {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// custom_source
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/handlers/custom_source.go
+ * - Filename: custom_source.go
+ * - Endpoint: /api/v1/custom-source/provider/list/anime
+ * @description
+ * Route returns a paginated list of anime from the provider.
+ */
+export type CustomSourceListAnime_Variables = {
+    provider: string
+    search: string
+    page: number
+    perPage: number
+}
+
+/**
+ * - Filepath: internal/handlers/custom_source.go
+ * - Filename: custom_source.go
+ * - Endpoint: /api/v1/custom-source/provider/list/manga
+ * @description
+ * Route returns a paginated list of manga from the provider.
+ */
+export type CustomSourceListManga_Variables = {
+    provider: string
+    search: string
+    page: number
+    perPage: number
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // debrid
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -503,6 +560,7 @@ export type DebridStartStream_Variables = {
     fileIndex?: number
     playbackType: DebridClient_StreamPlaybackType
     clientId: string
+    batchEpisodeFiles?: HibikeTorrent_BatchEpisodeFiles
 }
 
 /**
@@ -529,6 +587,22 @@ export type DebridCancelStream_Variables = {
  */
 export type DirectorySelector_Variables = {
     input: string
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// directstream
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/handlers/directstream.go
+ * - Filename: directstream.go
+ * - Endpoint: /api/v1/directstream/play/localfile
+ * @description
+ * Route request local file stream.
+ */
+export type DirectstreamPlayLocalFile_Variables = {
+    path: string
+    clientId: string
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -630,6 +704,18 @@ export type DownloadRelease_Variables = {
     destination: string
 }
 
+/**
+ * - Filepath: internal/handlers/download.go
+ * - Filename: download.go
+ * - Endpoint: /api/v1/download-mac-denshi-update
+ * @description
+ * Route downloads, extracts, and installs macOS update, then closes the app
+ */
+export type DownloadMacDenshiUpdate_Variables = {
+    download_url: string
+    version: string
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // explorer
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -669,6 +755,18 @@ export type FetchExternalExtensionData_Variables = {
  */
 export type InstallExternalExtension_Variables = {
     manifestUri: string
+}
+
+/**
+ * - Filepath: internal/handlers/extensions.go
+ * - Filename: extensions.go
+ * - Endpoint: /api/v1/extensions/external/install-repository
+ * @description
+ * Route installs the extensions from the given repository uri.
+ */
+export type InstallExternalExtensionRepository_Variables = {
+    repositoryUri: string
+    install: boolean
 }
 
 /**
@@ -736,6 +834,7 @@ export type SetPluginSettingsPinnedTrays_Variables = {
  */
 export type GrantPluginPermissions_Variables = {
     id: string
+    clientId: string
 }
 
 /**
@@ -778,6 +877,88 @@ export type RemoveFileCacheBucket_Variables = {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// library_explorer
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/handlers/library_explorer.go
+ * - Filename: library_explorer.go
+ * - Endpoint: /api/v1/library/explorer/directory-children
+ * @description
+ * Route loads the children of a specific directory into the file tree.
+ */
+export type LoadLibraryExplorerDirectoryChildren_Variables = {
+    directoryPath: string
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// local
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/handlers/local.go
+ * - Filename: local.go
+ * - Endpoint: /api/v1/local/offline
+ * @description
+ * Route sets the offline mode.
+ */
+export type SetOfflineMode_Variables = {
+    enabled: boolean
+}
+
+/**
+ * - Filepath: internal/handlers/local.go
+ * - Filename: local.go
+ * - Endpoint: /api/v1/local/track
+ * @description
+ * Route adds one or multiple media to be tracked for offline sync.
+ */
+export type LocalAddTrackedMedia_Variables = {
+    media: Array<{ mediaId: number; type: string; }>
+}
+
+/**
+ * - Filepath: internal/handlers/local.go
+ * - Filename: local.go
+ * - Endpoint: /api/v1/local/track
+ * @description
+ * Route remove media from being tracked for offline sync.
+ */
+export type LocalRemoveTrackedMedia_Variables = {
+    mediaId: number
+    type: string
+}
+
+/**
+ * - Filepath: internal/handlers/local.go
+ * - Filename: local.go
+ * - Endpoint: /api/v1/local/track/{id}/{type}
+ * @description
+ * Route checks if media is being tracked for offline sync.
+ */
+export type LocalGetIsMediaTracked_Variables = {
+    /**
+     *  AniList anime media ID
+     */
+    id: number
+    /**
+     *  Type of media (anime/manga)
+     */
+    type: string
+}
+
+/**
+ * - Filepath: internal/handlers/local.go
+ * - Filename: local.go
+ * - Endpoint: /api/v1/local/updated
+ * @description
+ * Route sets the flag to determine if there are local changes that need to be synced with AniList.
+ */
+export type LocalSetHasLocalChanges_Variables = {
+    updated: boolean
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // localfiles
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -816,6 +997,17 @@ export type UpdateLocalFileData_Variables = {
     locked: boolean
     ignored: boolean
     mediaId: number
+}
+
+/**
+ * - Filepath: internal/handlers/localfiles.go
+ * - Filename: localfiles.go
+ * - Endpoint: /api/v1/library/local-files/super-update
+ * @description
+ * Route updates local files with the given paths.
+ */
+export type SuperUpdateLocalFiles_Variables = {
+    files: Array<LibraryExplorer_SuperUpdateFileOptions>
 }
 
 /**
@@ -1158,28 +1350,6 @@ export type PreloadMediastreamMediaContainer_Variables = {
 /**
  * - Filepath: internal/handlers/metadata.go
  * - Filename: metadata.go
- * - Endpoint: /api/v1/metadata-provider/tvdb-episodes
- * @description
- * Route populate cache with TVDB episode metadata.
- */
-export type PopulateTVDBEpisodes_Variables = {
-    mediaId: number
-}
-
-/**
- * - Filepath: internal/handlers/metadata.go
- * - Filename: metadata.go
- * - Endpoint: /api/v1/metadata-provider/tvdb-episodes
- * @description
- * Route empties TVDB episode metadata cache.
- */
-export type EmptyTVDBEpisodes_Variables = {
-    mediaId: number
-}
-
-/**
- * - Filepath: internal/handlers/metadata.go
- * - Filename: metadata.go
  * - Endpoint: /api/v1/metadata-provider/filler
  * @description
  * Route fetches and caches filler data for the given media.
@@ -1197,6 +1367,73 @@ export type PopulateFillerData_Variables = {
  */
 export type RemoveFillerData_Variables = {
     mediaId: number
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// nakama
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/handlers/nakama.go
+ * - Filename: nakama.go
+ * - Endpoint: /api/v1/nakama/message
+ * @description
+ * Route sends a custom message through Nakama.
+ */
+export type SendNakamaMessage_Variables = {
+    messageType: string
+    payload: any
+    peerId?: string
+}
+
+/**
+ * - Filepath: internal/handlers/nakama.go
+ * - Filename: nakama.go
+ * - Endpoint: /api/v1/nakama/host/anime/library/files/{id}
+ * @description
+ * Route return the local files for the given AniList anime media id.
+ */
+export type GetNakamaAnimeLibraryFiles_Variables = {
+    /**
+     *  AniList anime media ID
+     */
+    id: number
+}
+
+/**
+ * - Filepath: internal/handlers/nakama.go
+ * - Filename: nakama.go
+ * - Endpoint: /api/v1/nakama/play
+ * @description
+ * Route plays the media from the host.
+ */
+export type NakamaPlayVideo_Variables = {
+    path: string
+    mediaId: number
+    anidbEpisode: string
+    clientId: string
+}
+
+/**
+ * - Filepath: internal/handlers/nakama.go
+ * - Filename: nakama.go
+ * - Endpoint: /api/v1/nakama/watch-party/create
+ * @description
+ * Route creates a new watch party session.
+ */
+export type NakamaCreateWatchParty_Variables = {
+    settings?: Nakama_WatchPartySessionSettings
+}
+
+/**
+ * - Filepath: internal/handlers/nakama.go
+ * - Filename: nakama.go
+ * - Endpoint: /api/v1/nakama/watch-party/join
+ * @description
+ * Route joins an existing watch party.
+ */
+export type NakamaJoinWatchParty_Variables = {
+    clientId: string
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1309,17 +1546,6 @@ export type PlaybackPlayVideo_Variables = {
 /**
  * - Filepath: internal/handlers/playback_manager.go
  * - Filename: playback_manager.go
- * - Endpoint: /api/v1/playback-manager/start-playlist
- * @description
- * Route starts playing a playlist.
- */
-export type PlaybackStartPlaylist_Variables = {
-    dbId: number
-}
-
-/**
- * - Filepath: internal/handlers/playback_manager.go
- * - Filename: playback_manager.go
  * - Endpoint: /api/v1/playback-manager/manual-tracking/start
  * @description
  * Route starts manual tracking of a media.
@@ -1343,7 +1569,7 @@ export type PlaybackStartManualTracking_Variables = {
  */
 export type CreatePlaylist_Variables = {
     name: string
-    paths: Array<string>
+    episodes: Array<Anime_PlaylistEpisode>
 }
 
 /**
@@ -1356,7 +1582,7 @@ export type CreatePlaylist_Variables = {
 export type UpdatePlaylist_Variables = {
     dbId: number
     name: string
-    paths: Array<string>
+    episodes: Array<Anime_PlaylistEpisode>
 }
 
 /**
@@ -1373,7 +1599,7 @@ export type DeletePlaylist_Variables = {
 /**
  * - Filepath: internal/handlers/playlist.go
  * - Filename: playlist.go
- * - Endpoint: /api/v1/playlist/episodes/{id}/{progress}
+ * - Endpoint: /api/v1/playlist/episodes/{id}
  * @description
  * Route returns all the local files of a playlist media entry that have not been watched.
  */
@@ -1387,6 +1613,10 @@ export type GetPlaylistEpisodes_Variables = {
      */
     progress: number
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// proxy
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // releases
@@ -1462,6 +1692,7 @@ export type GettingStarted_Variables = {
     discord: Models_DiscordSettings
     manga: Models_MangaSettings
     notifications: Models_NotificationSettings
+    nakama: Models_NakamaSettings
     enableTranscode: boolean
     enableTorrentStreaming: boolean
     debridProvider: string
@@ -1483,6 +1714,7 @@ export type SaveSettings_Variables = {
     discord: Models_DiscordSettings
     manga: Models_MangaSettings
     notifications: Models_NotificationSettings
+    nakama: Models_NakamaSettings
 }
 
 /**
@@ -1516,60 +1748,26 @@ export type DeleteLogs_Variables = {
     filenames: Array<string>
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// sync
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 /**
- * - Filepath: internal/handlers/sync.go
- * - Filename: sync.go
- * - Endpoint: /api/v1/sync/track
+ * - Filepath: internal/handlers/status.go
+ * - Filename: status.go
+ * - Endpoint: /api/v1/announcements
  * @description
- * Route adds one or multiple media to be tracked for offline sync.
+ * Route returns the server announcements.
  */
-export type SyncAddMedia_Variables = {
-    media: Array<{ mediaId: number; type: string; }>
+export type GetAnnouncements_Variables = {
+    platform: string
 }
 
 /**
- * - Filepath: internal/handlers/sync.go
- * - Filename: sync.go
- * - Endpoint: /api/v1/sync/track
+ * - Filepath: internal/handlers/status.go
+ * - Filename: status.go
+ * - Endpoint: /api/v1/status/home-items
  * @description
- * Route remove media from being tracked for offline sync.
+ * Route updates the home items.
  */
-export type SyncRemoveMedia_Variables = {
-    mediaId: number
-    type: string
-}
-
-/**
- * - Filepath: internal/handlers/sync.go
- * - Filename: sync.go
- * - Endpoint: /api/v1/sync/track/{id}/{type}
- * @description
- * Route checks if media is being tracked for offline sync.
- */
-export type SyncGetIsMediaTracked_Variables = {
-    /**
-     *  AniList anime media ID
-     */
-    id: number
-    /**
-     *  Type of media (anime/manga)
-     */
-    type: string
-}
-
-/**
- * - Filepath: internal/handlers/sync.go
- * - Filename: sync.go
- * - Endpoint: /api/v1/sync/updated
- * @description
- * Route sets the flag to determine if there are local changes that need to be synced with AniList.
- */
-export type SyncSetHasLocalChanges_Variables = {
-    updated: boolean
+export type UpdateHomeItems_Variables = {
+    items: Array<Models_HomeItem>
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1607,6 +1805,18 @@ export type TorrentClientAction_Variables = {
 /**
  * - Filepath: internal/handlers/torrent_client.go
  * - Filename: torrent_client.go
+ * - Endpoint: /api/v1/torrent-client/get-files
+ * @description
+ * Route gets the files of a torrent.
+ */
+export type TorrentClientGetFiles_Variables = {
+    torrent?: HibikeTorrent_AnimeTorrent
+    provider: string
+}
+
+/**
+ * - Filepath: internal/handlers/torrent_client.go
+ * - Filename: torrent_client.go
  * - Endpoint: /api/v1/torrent-client/download
  * @description
  * Route adds torrents to the torrent client.
@@ -1615,6 +1825,7 @@ export type TorrentClientDownload_Variables = {
     torrents: Array<HibikeTorrent_AnimeTorrent>
     destination: string
     smartSelect: { enabled: boolean; missingEpisodeNumbers: Array<number>; }
+    deselect?: { enabled: boolean; indices: Array<number>; }
     media?: AL_BaseAnime
 }
 
@@ -1666,20 +1877,6 @@ export type SearchTorrent_Variables = {
 /**
  * - Filepath: internal/handlers/torrentstream.go
  * - Filename: torrentstream.go
- * - Endpoint: /api/v1/torrentstream/episodes/{id}
- * @description
- * Route get list of episodes
- */
-export type GetTorrentstreamEpisodeCollection_Variables = {
-    /**
-     *  AniList anime media ID
-     */
-    id: number
-}
-
-/**
- * - Filepath: internal/handlers/torrentstream.go
- * - Filename: torrentstream.go
  * - Endpoint: /api/v1/torrentstream/settings
  * @description
  * Route save torrentstream settings.
@@ -1717,6 +1914,7 @@ export type TorrentstreamStartStream_Variables = {
     fileIndex?: number
     playbackType: Torrentstream_PlaybackType
     clientId: string
+    batchEpisodeFiles?: HibikeTorrent_BatchEpisodeFiles
 }
 
 /**

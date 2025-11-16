@@ -1,13 +1,17 @@
 import { Extension_InvalidExtension } from "@/api/generated/types"
 import { useGrantPluginPermissions, useReloadExternalExtension } from "@/api/hooks/extensions.hooks"
+import { useWebsocketMessageListener } from "@/app/(main)/_hooks/handle-websockets"
 import { ExtensionSettings } from "@/app/(main)/extensions/_containers/extension-card"
 import { ExtensionCodeModal } from "@/app/(main)/extensions/_containers/extension-code"
+import { LANGUAGES_LIST } from "@/app/(main)/manga/_lib/language-map"
+import { clientIdAtom } from "@/app/websocket-provider"
+import { SeaImage } from "@/components/shared/sea-image"
 import { Badge } from "@/components/ui/badge"
 import { Button, IconButton } from "@/components/ui/button"
 import { cn } from "@/components/ui/core/styling"
 import { Modal } from "@/components/ui/modal"
-import capitalize from "lodash/capitalize"
-import Image from "next/image"
+import { atom, useAtomValue } from "jotai"
+import { useAtom } from "jotai/react"
 import React from "react"
 import { BiCog, BiInfoCircle } from "react-icons/bi"
 import { FaCode } from "react-icons/fa"
@@ -33,17 +37,17 @@ export function InvalidExtensionCard(props: InvalidExtensionCardProps) {
         <div
             className={cn(
                 "group/extension-card relative overflow-hidden",
-                "bg-gray-950 border border-[rgb(255_255_255_/_5%)] rounded-[--radius-md] p-3",
+                "bg-gray-900 border border-red-400/10 rounded-xl p-3",
             )}
         >
             <div
                 className={cn(
-                    "absolute z-[0] right-0 top-0 h-full w-full max-w-[150px] bg-gradient-to-l to-gray-950",
-                    "max-w-[50%] from-red-950/20",
+                    "absolute z-[0] left-0 top-0 h-full w-full max-w-[150px] bg-gradient-to-r to-gray-900",
+                    "max-w-[50%] from-red-900/10",
                 )}
             ></div>
 
-            <div className="absolute top-3 right-3 grid grid-cols-2 gap-1 p-1 rounded-[--radius-md] bg-gray-950 z-[2]">
+            <div className="absolute top-3 right-3 grid grid-cols-2 gap-1 p-1 rounded-[--radius-md] bg-gray-900 z-[2]">
                 <Modal
                     trigger={<IconButton
                         size="sm"
@@ -105,7 +109,7 @@ export function InvalidExtensionCard(props: InvalidExtensionCardProps) {
                 <div className="flex gap-3 pr-16">
                     <div className="relative rounded-[--radius-md] size-12 bg-gray-900 overflow-hidden">
                         {!!extension.extension?.icon ? (
-                            <Image
+                            <SeaImage
                                 src={extension.extension?.icon}
                                 alt="extension icon"
                                 crossOrigin="anonymous"
@@ -143,15 +147,12 @@ export function InvalidExtensionCard(props: InvalidExtensionCardProps) {
                     {!!extension.extension?.version && <Badge className="rounded-[--radius-md]">
                         {extension.extension?.version}
                     </Badge>}
-                    {extension.extension?.lang && <Badge className="rounded-[--radius-md]">
+                    <Badge className="rounded-[--radius-md]" intent="unstyled">
+                        {extension.extension?.author ?? "-"}
+                    </Badge>
+                    {extension.extension?.lang && <Badge className="rounded-[--radius-md]" intent="unstyled">
                         {extension.extension?.lang?.toUpperCase?.()}
                     </Badge>}
-                    <Badge className="rounded-[--radius-md]" intent="unstyled">
-                        {extension.extension?.author ?? "Unknown author"}
-                    </Badge>
-                    <Badge className="rounded-[--radius-md]" intent="unstyled">
-                        {capitalize(extension.extension?.author ?? "?")}
-                    </Badge>
                 </div>
 
             </div>
@@ -164,6 +165,8 @@ type UnauthorizedExtensionPluginCardProps = {
     isInstalled: boolean
 }
 
+const shouldGrantPluginPermissionsAtom = atom<string[]>([])
+
 export function UnauthorizedExtensionPluginCard(props: UnauthorizedExtensionPluginCardProps) {
 
     const {
@@ -172,31 +175,45 @@ export function UnauthorizedExtensionPluginCard(props: UnauthorizedExtensionPlug
         ...rest
     } = props
 
+    const clientId = useAtomValue(clientIdAtom)
     const { mutate: grantPluginPermissions, isPending: isGrantingPluginPermissions } = useGrantPluginPermissions()
     const { mutate: reloadExternalExtension, isPending: isReloadingExtension } = useReloadExternalExtension()
+
+    const [shouldGrantPluginPermissions, setShouldGrantPluginPermissions] = useAtom(shouldGrantPluginPermissionsAtom)
+
+    useWebsocketMessageListener({
+        type: "grant-plugin-permission-check",
+        onMessage: (message: string) => {
+            // message format: {extensionId}$$${code}
+            if (message.startsWith(extension.extension?.id) && shouldGrantPluginPermissions.includes(extension.extension?.id ?? "")) {
+                setShouldGrantPluginPermissions(p => p.filter(id => id !== extension.extension?.id ?? ""))
+                grantPluginPermissions({ id: extension.extension?.id ?? "", clientId: "CODE:" + message.split("$$$")?.[1] || "" })
+            }
+        },
+    })
 
     return (
         <div
             className={cn(
                 "group/extension-card relative overflow-hidden",
-                "bg-gray-950 border border-[rgb(255_255_255_/_5%)] rounded-[--radius-md] p-3 border-yellow-900",
+                "bg-gray-900 border  rounded-xl p-3 border-yellow-400/10",
             )}
         >
             <div
                 className={cn(
-                    "absolute z-[0] right-0 top-0 h-full w-full max-w-[150px] bg-gradient-to-l to-gray-950",
-                    "max-w-[50%] from-yellow-950/20",
+                    "absolute z-[0] left-0 top-0 h-full w-full max-w-[150px] bg-gradient-to-r to-gray-900",
+                    "max-w-[50%] from-yellow-900/10",
                 )}
             ></div>
 
-            <div className="absolute top-3 right-3 grid grid-cols-2 gap-1 p-1 rounded-[--radius-md] bg-gray-950 z-[2]">
+            <div className="absolute top-3 right-3 flex flex-col gap-1 p-1 rounded-xl bg-gray-900 z-[2]">
                 <Modal
-                    trigger={<IconButton
+                    trigger={<Button
                         size="sm"
                         intent="warning-basic"
-                        icon={<LuShieldCheck />}
+                        leftIcon={<LuShieldCheck />}
                         className="animate-bounce"
-                    />}
+                    >Grant</Button>}
                     title="Permissions required"
                     contentClass="max-w-2xl"
                 >
@@ -212,13 +229,25 @@ export function UnauthorizedExtensionPluginCard(props: UnauthorizedExtensionPlug
                         {extension.path}
                     </p>
 
+                    <ExtensionCodeModal extension={extension.extension} readOnly>
+                        <Button
+                            size="md"
+                            intent="gray-subtle"
+                        >
+                            View code
+                        </Button>
+                    </ExtensionCodeModal>
+
                     <Button
                         size="md"
                         intent="success-subtle"
                         leftIcon={<LuShieldCheck className="size-5" />}
                         onClick={() => {
                             if (!extension.extension?.id) return toast.error("Extension has no ID")
-                            grantPluginPermissions({ id: extension.extension?.id ?? "" })
+                            setShouldGrantPluginPermissions(p => [...p, extension.extension?.id!])
+                            React.startTransition(() => {
+                                grantPluginPermissions({ id: extension.extension?.id ?? "", clientId: clientId || "" })
+                            })
                         }}
                         loading={isGrantingPluginPermissions}
                     >
@@ -263,7 +292,7 @@ export function UnauthorizedExtensionPluginCard(props: UnauthorizedExtensionPlug
                 <div className="flex gap-3 pr-16">
                     <div className="relative rounded-[--radius-md] size-12 bg-gray-900 overflow-hidden">
                         {!!extension.extension?.icon ? (
-                            <Image
+                            <SeaImage
                                 src={extension.extension?.icon}
                                 alt="extension icon"
                                 crossOrigin="anonymous"
@@ -283,7 +312,7 @@ export function UnauthorizedExtensionPluginCard(props: UnauthorizedExtensionPlug
                         <p className="font-semibold line-clamp-1">
                             {extension.extension?.name ?? "Unknown"}
                         </p>
-                        <p className="text-[--muted] text-sm line-clamp-1 italic">
+                        <p className="text-[--muted] text-xs line-clamp-1 italic">
                             {extension.extension?.id ?? "Invalid ID"}
                         </p>
                     </div>
@@ -297,17 +326,15 @@ export function UnauthorizedExtensionPluginCard(props: UnauthorizedExtensionPlug
                 </div>
 
                 <div className="flex gap-2">
-                    {!!extension.extension?.version && <Badge className="rounded-[--radius-md]">
-                        {extension.extension?.version}
+                    {!!extension.extension.version && <Badge className="rounded-md tracking-wide" intent={"unstyled"}>
+                        {extension.extension.version}
                     </Badge>}
-                    {extension.extension?.lang && <Badge className="rounded-[--radius-md]" intent="unstyled">
-                        {extension.extension?.lang?.toUpperCase?.()}
-                    </Badge>}
-                    <Badge className="rounded-[--radius-md]" intent="unstyled">
-                        {extension.extension?.author ?? "Unknown author"}
+                    <Badge className="rounded-md" intent="unstyled">
+                        {extension.extension.author}
                     </Badge>
-                    <Badge className="rounded-[--radius-md]" intent="unstyled">
-                        {capitalize(extension.extension?.author ?? "?")}
+                    <Badge className="border-transparent rounded-md" intent="unstyled">
+                        {/*{extension.extension.lang.toUpperCase()}*/}
+                        {LANGUAGES_LIST[extension.extension.lang?.toLowerCase()]?.nativeName || extension.extension.lang?.toUpperCase() || "Unknown"}
                     </Badge>
                 </div>
 

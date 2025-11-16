@@ -2,12 +2,15 @@ package anilist
 
 import (
 	"fmt"
+	"seanime/internal/hook"
+
 	"github.com/goccy/go-json"
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 )
 
 func ListMissedSequels(
+	client AnilistClient,
 	animeCollectionWithRelations *AnimeCollectionWithRelations,
 	logger *zerolog.Logger,
 	token string,
@@ -73,15 +76,32 @@ func ListMissedSequels(
 	variables["inCollection"] = false
 	variables["sort"] = MediaSortStartDateDesc
 
+	// Event
+	reqEvent := &ListMissedSequelsRequestedEvent{
+		AnimeCollectionWithRelations: animeCollectionWithRelations,
+		Variables:                    variables,
+		List:                         make([]*BaseAnime, 0),
+		Query:                        SearchBaseAnimeByIdsDocument,
+	}
+	err = hook.GlobalHookManager.OnListMissedSequelsRequested().Trigger(reqEvent)
+	if err != nil {
+		return nil, err
+	}
+
+	// If the hook prevented the default behavior, return the data
+	if reqEvent.DefaultPrevented {
+		return reqEvent.List, nil
+	}
+
 	requestBody, err := json.Marshal(map[string]interface{}{
-		"query":     SearchBaseAnimeByIdsDocument,
-		"variables": variables,
+		"query":     reqEvent.Query,
+		"variables": reqEvent.Variables,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	data, err := customQuery(requestBody, logger, token)
+	data, err := client.CustomQuery(requestBody, logger, token)
 	if err != nil {
 		return nil, err
 	}
@@ -99,10 +119,20 @@ func ListMissedSequels(
 		return nil, fmt.Errorf("no data found")
 	}
 
-	return searchRes.Page.Media, nil
+	// Event
+	event := &ListMissedSequelsEvent{
+		List: searchRes.Page.Media,
+	}
+	err = hook.GlobalHookManager.OnListMissedSequels().Trigger(event)
+	if err != nil {
+		return nil, err
+	}
+
+	return event.List, nil
 }
 
 func ListAnimeM(
+	client AnilistClient,
 	Page *int,
 	Search *string,
 	PerPage *int,
@@ -114,6 +144,7 @@ func ListAnimeM(
 	SeasonYear *int,
 	Format *MediaFormat,
 	IsAdult *bool,
+	CountryOfOrigin *string,
 	logger *zerolog.Logger,
 	token string,
 ) (*ListAnime, error) {
@@ -152,7 +183,9 @@ func ListAnimeM(
 	if IsAdult != nil {
 		variables["isAdult"] = *IsAdult
 	}
-
+	if CountryOfOrigin != nil {
+		variables["countryOfOrigin"] = *CountryOfOrigin
+	}
 	requestBody, err := json.Marshal(map[string]interface{}{
 		"query":     ListAnimeDocument,
 		"variables": variables,
@@ -161,7 +194,7 @@ func ListAnimeM(
 		return nil, err
 	}
 
-	data, err := customQuery(requestBody, logger, token)
+	data, err := client.CustomQuery(requestBody, logger, token)
 	if err != nil {
 		return nil, err
 	}
@@ -179,6 +212,7 @@ func ListAnimeM(
 }
 
 func ListMangaM(
+	client AnilistClient,
 	Page *int,
 	Search *string,
 	PerPage *int,
@@ -238,7 +272,7 @@ func ListMangaM(
 		return nil, err
 	}
 
-	data, err := customQuery(requestBody, logger, token)
+	data, err := client.CustomQuery(requestBody, logger, token)
 	if err != nil {
 		return nil, err
 	}
@@ -256,6 +290,7 @@ func ListMangaM(
 }
 
 func ListRecentAiringAnimeM(
+	client AnilistClient,
 	Page *int,
 	Search *string,
 	PerPage *int,
@@ -300,7 +335,7 @@ func ListRecentAiringAnimeM(
 		return nil, err
 	}
 
-	data, err := customQuery(requestBody, logger, token)
+	data, err := client.CustomQuery(requestBody, logger, token)
 	if err != nil {
 		return nil, err
 	}
@@ -331,6 +366,7 @@ func ListAnimeCacheKey(
 	SeasonYear *int,
 	Format *MediaFormat,
 	IsAdult *bool,
+	CountryOfOrigin *string,
 ) string {
 
 	key := "ListAnime"
@@ -367,7 +403,9 @@ func ListAnimeCacheKey(
 	if IsAdult != nil {
 		key += fmt.Sprintf("_%t", *IsAdult)
 	}
-
+	if CountryOfOrigin != nil {
+		key += fmt.Sprintf("_%s", *CountryOfOrigin)
+	}
 	return key
 
 }
@@ -386,7 +424,7 @@ func ListMangaCacheKey(
 	IsAdult *bool,
 ) string {
 
-	key := "ListAnime"
+	key := "ListManga"
 	if Page != nil {
 		key += fmt.Sprintf("_%d", *Page)
 	}
@@ -499,32 +537,3 @@ fragment baseAnime on Media {
 	}
 }
   `
-
-func ListRecentAiringAnimeCacheKey(
-	Page *int,
-	Search *string,
-	PerPage *int,
-	AiringAtGreater *int,
-	AiringAtLesser *int,
-) string {
-
-	key := "ListRecentAnime"
-	if Page != nil {
-		key += fmt.Sprintf("_%d", *Page)
-	}
-	if Search != nil {
-		key += fmt.Sprintf("_%s", *Search)
-	}
-	if PerPage != nil {
-		key += fmt.Sprintf("_%d", *PerPage)
-	}
-	if AiringAtGreater != nil {
-		key += fmt.Sprintf("_%d", *AiringAtGreater)
-	}
-	if AiringAtLesser != nil {
-		key += fmt.Sprintf("_%d", *AiringAtLesser)
-	}
-
-	return key
-
-}
