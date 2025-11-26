@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## v3.0.8
+
+- 🦺 Extensions: Fixed "incompatible or obsolete" extension error on startup (regression)
+
+## v3.0.7
+
+- ⚡️ Manga Reader: Added visual feedback for selected settings #525
+- 🦺 Local Manga: Fixed rare runtime crash when loading pages 
+- 🦺 Fixed custom sources for local accounts
+- 🦺 Custom sources: Fixed potential resource leak
+- 🦺 Extensions: Fixed drawer component for tray plugins
+- 🏗️ Refactoring: Fixed shared module thread-safety and runtime module updates
+  - Fixes issues when switching offline mode on/off at runtime
+  - Fixes issues when logging in/out at runtime
+- 🏗️ iOS: Update PWA icon 
+
 ## v3.0.6
 
 - 🦺 Server: Fixed -datadir flag (regression)
