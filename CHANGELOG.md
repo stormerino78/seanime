@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## v3.2.0
+
+- ✨️ Nakama: Watch party support for online streaming (Experimental)
+- ✨️️ Nakama: Watch party chat
+- ⚡️ Online Streaming: Import external subtitle files
+- ⚡️ Nakama: Improved watch party support with built-in player
+- ⚡️ Plugins: New VideoCore API for interacting with built-in players
+- 🦺 Online Streaming: Fixed ASS subtitles from providers
+- 🦺 Nakama: Fixed playlists for shared library episodes
+- 🦺 Home screen: Fixed genre selector for anime library
+- 🦺 Online Streaming: Fixed page z-index
+- 🏗️ Nakama: Refactored watch party & relay mode handling
+  - Relay server no longer launches torrent streams
+- 🏗️ VideoCore: Shared event system for Denshi player and online streaming
+
 ## v3.1.0
 
 - ✨️ Online Streaming: New player with added features (Experimental)
@@ -17,7 +32,7 @@ All notable changes to this project will be documented in this file.
   - Blacklist subtitle names
   - Subtitle delay support
   - Faster thumbnail generation
-- ⚡️ Server: TLS support @Juj1-js
+- ⚡️ Server: TLS support @Ju1-js
 - ⚡️ Extensions: Added ChromeDP headless browser API
 - 🦺 Video Proxy: Fixed playlist failing at integer conversion
 - 🦺 Continue Watching: Add entries without metadata when streaming
