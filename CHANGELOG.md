@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## v3.2.3
+
+- ✨️ Nakama: Cloud Rooms (Public Beta)
+  - Host watch parties without exposing your server to the internet.
+  - Communication between the host and peers is managed by Seanime's Rooms API
+  - Note: This feature might be restricted or removed in the future.
+- 🦺 Online streaming: Fixed missing AniSkip data
+- 🦺 VideoCore: Fixed custom fonts not applying
+- 🦺 Torrent streaming: Fixed auto play starting wrong torrent in some cases
+- 🦺 Nakama: Fixed peers kicked out of watch party when playback ends
+- 🦺 Nakama: Restrict skip actions when watch party is active
+- 🏗️ Settings: Updated Nakama settings layout
+
 ## v3.2.2
 
 - 🦺 Denshi Player: Fixed double progress updates
