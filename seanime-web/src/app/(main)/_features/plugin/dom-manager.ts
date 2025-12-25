@@ -1,4 +1,5 @@
 import { useWebsocketSender } from "@/app/(main)/_hooks/handle-websockets"
+import { useIsMainTab, useIsMainTabRef } from "@/app/websocket-provider"
 import { logger } from "@/lib/helpers/debug"
 import { useEffect, useRef } from "react"
 import { PluginDOMElement } from "./generated/plugin-dom-types"
@@ -49,6 +50,8 @@ export function useDOMManager(extensionId: string) {
     const mutationObserverRef = useRef<MutationObserver | null>(null)
     const disposedRef = useRef<boolean>(false)
     const domReadySentRef = useRef<boolean>(false)
+    const isMainTab = useIsMainTab()
+    const isMainTabRef = useIsMainTabRef()
     // Track only elements created by this plugin
     const createdElementsRef = useRef<Set<string>>(new Set())
     const intersectionObserversRef = useRef<Map<string, IntersectionObserver>>(new Map())
@@ -81,9 +84,16 @@ export function useDOMManager(extensionId: string) {
 
     // Send DOM ready event when document is loaded
     const sendDOMReadyEvent = () => {
+        if (!isMainTabRef.current) return
         if (disposedRef.current || domReadySentRef.current) return
         domReadySentRef.current = true
         safeSendPluginMessage(PluginClientEvents.DOMReady, {})
+    }
+
+    const sendDOMMainTabReadyEvent = () => {
+        if (!isMainTabRef.current) return
+        if (disposedRef.current) return
+        safeSendPluginMessage(PluginClientEvents.DOMMainTabReady, {})
     }
 
     // Convert a DOM element to a serializable object
@@ -172,6 +182,7 @@ export function useDOMManager(extensionId: string) {
 
     // Initialize mutation observer to watch for DOM changes
     const initMutationObserver = () => {
+        if (!isMainTabRef.current) return
         if (typeof window === "undefined" || typeof MutationObserver === "undefined") return
 
         mutationObserverRef.current = new MutationObserver((mutations) => {
@@ -264,6 +275,7 @@ export function useDOMManager(extensionId: string) {
 
     // Handler functions
     const handleDOMQuery = (payload: Plugin_Server_DOMQueryEventPayload) => {
+        if (!isMainTabRef.current) return
         const { selector, requestId, withInnerHTML, identifyChildren, withOuterHTML } = payload
         if (disposedRef.current) return
         const elements = document.querySelectorAll(selector)
@@ -275,6 +287,7 @@ export function useDOMManager(extensionId: string) {
     }
 
     const handleDOMQueryOne = (payload: Plugin_Server_DOMQueryOneEventPayload) => {
+        if (!isMainTabRef.current) return
         const { selector, requestId, withInnerHTML, identifyChildren, withOuterHTML } = payload
         if (disposedRef.current) return
         const element = document.querySelector(selector)
@@ -287,6 +300,7 @@ export function useDOMManager(extensionId: string) {
     }
 
     const handleDOMObserve = (payload: Plugin_Server_DOMObserveEventPayload) => {
+        if (!isMainTabRef.current) return
         const { selector, observerId, withInnerHTML, identifyChildren, withOuterHTML } = payload
         if (disposedRef.current) return
 
@@ -335,6 +349,7 @@ export function useDOMManager(extensionId: string) {
     }
 
     const handleDOMObserveInView = (payload: Plugin_Server_DOMObserveInViewEventPayload) => {
+        if (!isMainTabRef.current) return
         const { selector, observerId, withInnerHTML, identifyChildren, withOuterHTML, margin } = payload
         if (disposedRef.current) return
 
@@ -418,12 +433,14 @@ export function useDOMManager(extensionId: string) {
     }
 
     const handleDOMStopObserve = (payload: Plugin_Server_DOMStopObserveEventPayload) => {
+        if (!isMainTabRef.current) return
         const { observerId } = payload
         elementObserversRef.current.delete(observerId)
         observedElementsRef.current.delete(observerId)
     }
 
     const handleDOMCreate = (payload: Plugin_Server_DOMCreateEventPayload) => {
+        if (!isMainTabRef.current) return
         const { tagName, requestId } = payload
         if (disposedRef.current) return
         const element = document.createElement(tagName)
@@ -454,6 +471,7 @@ export function useDOMManager(extensionId: string) {
     }
 
     const handleDOMManipulate = (payload: Plugin_Server_DOMManipulateEventPayload) => {
+        if (!isMainTabRef.current) return
         if (disposedRef.current) return
         const { elementId, action, params, requestId } = payload
         const element = document.getElementById(elementId)
@@ -532,6 +550,7 @@ export function useDOMManager(extensionId: string) {
                 // }
 
                 element.outerHTML = params.html
+                break
             case "appendChild":
                 const child = document.getElementById(params.childId)
                 if (child) {
@@ -794,6 +813,19 @@ export function useDOMManager(extensionId: string) {
         logger("DOMManager").info("Cleaning up DOMManager for extension", extensionId)
         // Mark as disposed to prevent further message sending
         disposedRef.current = true
+
+        if (!isMainTabRef.current) {
+            // If not main tab, just clear the maps without DOM operations
+            elementObserversRef.current.clear()
+            eventListenersRef.current.clear()
+            observedElementsRef.current.clear()
+            createdElementsRef.current.clear()
+            elementIdsMapRef.current.clear()
+            intersectionObserversRef.current.clear()
+            return
+        }
+
+        // Making sure domReady event is only sent once, even if when the main tab changes
         domReadySentRef.current = false
 
         // Stop the mutation observer
@@ -845,7 +877,24 @@ export function useDOMManager(extensionId: string) {
         }
     }
 
+    // Dispatch event each time the main tab changed
+    const previousIsMainTabRef = useRef(isMainTabRef.current)
+    const onMainTabChangedEvent = () => {
+        if (isMainTabRef.current && previousIsMainTabRef.current !== isMainTabRef.current) {
+            sendDOMMainTabReadyEvent()
+        }
+        previousIsMainTabRef.current = isMainTabRef.current
+    }
+
     useEffect(() => {
+        if (!isMainTab) return
+
+        // Reset disposed state
+        disposedRef.current = false
+
+        // Making sure domReady event is only sent once, even if when the main tab changes
+        // domReadySentRef.current = false
+
         logger("DOMManager").info("DOMManager hook initialized for extension", extensionId)
 
         // Send DOM ready event if document is already loaded
@@ -855,6 +904,8 @@ export function useDOMManager(extensionId: string) {
             // Otherwise wait for the document to be loaded
             window.addEventListener("load", sendDOMReadyEvent)
         }
+
+        onMainTabChangedEvent()
 
         // Initialize mutation observer
         initMutationObserver()
@@ -867,7 +918,7 @@ export function useDOMManager(extensionId: string) {
                 window.removeEventListener("load", sendDOMReadyEvent)
             }
         }
-    }, [extensionId])
+    }, [extensionId, isMainTab])
 
     return {
         handleDOMQuery,
