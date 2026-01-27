@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## v3.4.1
+
+- 🦺 Auto Downloader: Fixed resolution preference causing no results to be returned
+- 🦺 Performance: Removed heavy background blurring and glow effects
+- 🦺 Torrent Search: Reverted 'special' provider inclusion in batch searches
+- 🦺 My Lists: Fixed library badge not showing up
+
+## v3.4.0
+
+- ✨️ New Auto Downloader
+  - Up to 10x more torrents will be compared in a single run
+  - Added ability to select multiple other indexers/providers for specific rules
+  - Added new constraints: Min seeders, Min size, Max size, Excluded terms
+  - Added suggestions for rule parameters
+  - Added ability to simulate runs to test specific rules
+  - New 'Default Provider' setting
+- ✨️ Auto Downloader: Profiles
+  - Ability to apply filters globally or set up a scoring system for torrents
+  - Ability to delay downloads in order to fetch better torrents
+  - Each profile can have its own set of preferred params (providers, codecs, etc...)
+  - Each rule can have a specific profile or inherit global ones
+- ✨️ Auto-select is now fully customizable
+  - Ability to choose and rank providers/indexers, release groups, codecs, etc. 
+  - Ability to prefer/avoid/block specific codecs, sources, languages
+  - Ability to exclude terms
+- ⚡️ Improved UI Performance
+  - Increased fluidity on heavy pages
+  - Up to 2x reduction in FPS drops when navigating
+- ⚡️ Improved torrent filename parsing
+- ⚡️ Torrent Search: 'Special' provider will be included in batch search
+- ⚡️ Anime Library: Locked files are shelved if their library path is missing
+  - This is useful when using external drives
+- 🦺 Library Explorer: Reload anime entry after super update
+- 🦺 Plugins: Fixed DOM events not firing when reloading tab
+- 🏗️ BREAKING: Removed 'Default Auto-select Provider' setting from 'Torrent Provider'
+  - Use auto-select customization instead
+- 🏗️ Plugins: Webview API is now stable
+
 ## v3.3.1
 
 - ⚡️ Logs retrived from the UI are now anonymized
