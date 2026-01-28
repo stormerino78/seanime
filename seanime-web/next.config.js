@@ -22,7 +22,7 @@ const nextConfig = {
     allowedDevOrigins: ["127.0.0.1", "localhost"],
     experimental: {
         // optimizePackageImports: ["react-icons", "lodash", "date-fns"],
-        isolatedDevBuild: true,
+        // isolatedDevBuild: true, // memory issues?
         browserDebugInfoInTerminal: false,
     },
 }
