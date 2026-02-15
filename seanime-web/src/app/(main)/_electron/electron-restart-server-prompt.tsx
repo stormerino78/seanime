@@ -1,4 +1,4 @@
-import { isUpdateInstalledAtom, isUpdatingAtom } from "@/app/(main)/_tauri/tauri-update-modal"
+import { isUpdateInstalledAtom, isUpdatingAtom } from "@/app/(main)/_electron/electron-update-modal"
 import { websocketConnectedAtom, websocketConnectionErrorCountAtom } from "@/app/websocket-provider"
 import { LuffyError } from "@/components/shared/luffy-error"
 import { Button } from "@/components/ui/button"
@@ -30,7 +30,7 @@ export function ElectronRestartServerPrompt() {
     }, [])
 
     const handleRestart = async () => {
-        if (process.env.NODE_ENV === "development") return toast.warning("Dev mode: Not restarting server")
+        if (import.meta.env.MODE === "development") return toast.warning("Dev mode: Not restarting server")
 
         setHasClickedRestarted(true)
         toast.info("Restarting server...")

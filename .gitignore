@@ -46,45 +46,36 @@ TODO-priv.md
 seanime-parser/.git
 
 ##
-## Web
+## Web App
 ##
 seanime-web/node_modules
+seanime-web/dist
 seanime-web/out
 seanime-web/out-desktop
 seanime-web/out-denshi
 seanime-web/web
+seanime-web/.tanstack
 seanime-web/.next
 seanime-web/.idea
-# dependencies
 seanime-web/.pnp
 seanime-web/.pnp.js
 seanime-web/.yarn/install-state.gz
-# testing
 seanime-web/coverage
-# next.js
-# production
 seanime-web/build
-# misc
 seanime-web/.DS_Store
 seanime-web/*.pem
-# debug
 seanime-web/npm-debug.log*
 seanime-web/yarn-debug.log*
 seanime-web/yarn-error.log*
-# local env files
 seanime-web/.env*.local
-# vercel
-seanime-web/.vercel
-# typescript
 seanime-web/*.tsbuildinfo
-seanime-web/next-env.d.ts
 seanime-web/snapshot
 seanime-web/logs
 seanime-web/analyze
 seanime-web/TODO-priv.md
 seanime-web/CHANGELOG-priv.md
 
-seanime-web/public/test*
+seanime-webapp/public/test*
 
 codegen/generated/hooks.mdx
 
