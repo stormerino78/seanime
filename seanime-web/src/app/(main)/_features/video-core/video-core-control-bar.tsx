@@ -62,11 +62,11 @@ export function VideoCoreControlBar(props: {
         cursorPositionRef.current = cursorPosition
     }, [cursorPosition])
 
-    const setCursorPositionC = React.useCallback((nextPosition: "outside" | "approaching" | "hover") => {
+    const setCursorPositionC = React.useEffectEvent((nextPosition: "outside" | "approaching" | "hover") => {
         if (cursorPositionRef.current === nextPosition) return
         cursorPositionRef.current = nextPosition
         setCursorPosition(nextPosition)
-    }, [])
+    })
 
     // On mobile, always show controls when paused or when tapping
     const showOnlyTimeRange = isMobile ? false : (
@@ -115,7 +115,7 @@ export function VideoCoreControlBar(props: {
             return
         }
 
-        const rect = containerRectRef.current ?? containerElement.getBoundingClientRect()
+        const rect = containerElement.getBoundingClientRect()
         containerRectRef.current = rect
         const y = e instanceof PointerEvent ? e.clientY - rect.top : 0
         const registerThreshold = !isMiniPlayer ? 150 : 100 // pixels from the bottom to start registering position
@@ -132,6 +132,7 @@ export function VideoCoreControlBar(props: {
 
     function handleVideoContainerPointerLeave(_e: Event) {
         if (isMobile) return
+        containerRectRef.current = null
         setCursorPositionC("outside")
     }
 
@@ -159,7 +160,7 @@ export function VideoCoreControlBar(props: {
             window.removeEventListener("resize", updateContainerRect)
             containerRectRef.current = null
         }
-    }, [containerElement, isMobile, isMiniPlayer, setCursorPositionC])
+    }, [containerElement, isMobile, isMiniPlayer])
 
     React.useLayoutEffect(() => {
         if (!containerElement || isMobile) return
