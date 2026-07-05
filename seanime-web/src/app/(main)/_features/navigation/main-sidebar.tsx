@@ -38,8 +38,9 @@ import { FiLogIn, FiSearch } from "react-icons/fi"
 import { HiOutlineServerStack } from "react-icons/hi2"
 import { IoCloudOfflineOutline, IoHomeOutline } from "react-icons/io5"
 import { LuBookOpen, LuCalendar, LuCompass, LuRefreshCw, LuRss, LuSettings } from "react-icons/lu"
+import { MdArrowForward } from "react-icons/md"
+import { MdArrowBack } from "react-icons/md"
 import { MdOutlineConnectWithoutContact } from "react-icons/md"
-import { PiArrowCircleLeftDuotone, PiArrowCircleRightDuotone } from "react-icons/pi"
 import { RiListCheck3 } from "react-icons/ri"
 import { SiBittorrent, SiQbittorrent, SiTransmission } from "react-icons/si"
 import { TbReportSearch } from "react-icons/tb"
@@ -208,7 +209,7 @@ function SidebarNavigation({ isCollapsed, containerRef }: { isCollapsed: boolean
             href: "/schedule",
             isCurrent: pathname === "/schedule",
             addon: missingEpisodeCount > 0 ? <Badge
-                className="absolute right-0 top-0" size="sm"
+                className="absolute right-0 top-0 bg-red-400" size="sm"
                 intent="alert-solid"
             >{missingEpisodeCount}</Badge> : undefined,
         },
@@ -285,7 +286,7 @@ function SidebarNavigation({ isCollapsed, containerRef }: { isCollapsed: boolean
             href: "/auto-downloader",
             isCurrent: pathname === "/auto-downloader",
             addon: autoDownloaderQueueCount > 0 ? <Badge
-                className="absolute right-0 top-0" size="sm"
+                className="absolute right-0 top-0 bg-red-400" size="sm"
                 intent="alert-solid"
             >{autoDownloaderQueueCount}</Badge> : undefined,
         }] : [],
@@ -451,17 +452,17 @@ function SidebarNavigation({ isCollapsed, containerRef }: { isCollapsed: boolean
                     className="bg-transparent border-none"
                     trigger={<IconButton
                         intent="gray-basic"
-                        className="!text-[--muted] hover:!text-[--foreground]"
-                        icon={<PiArrowCircleLeftDuotone />}
+                        className="!text-[--muted] hover:!text-[--foreground] rounded-full"
+                        icon={<MdArrowBack />}
                         onClick={() => {
                             router.back()
                         }}
                     />}
                 >
                     <IconButton
-                        icon={<PiArrowCircleRightDuotone />}
+                        icon={<MdArrowForward />}
                         intent="gray-subtle"
-                        className="opacity-50 hover:opacity-100"
+                        className="opacity-50 hover:opacity-100 rounded-full"
                         onClick={() => {
                             router.forward()
                         }}
@@ -556,7 +557,7 @@ function SidebarFooter({ isCollapsed, onLogout }: { isCollapsed: boolean, onLogo
                         isCurrent: pathname.includes("/extensions"),
                         addon: (!!updateData?.length || !!pluginWithIssuesCount)
                             ? <Badge
-                                className="absolute right-0 top-0 bg-red-500 animate-pulse" size="sm"
+                                className="absolute right-0 top-0 bg-red-400 animate-pulse" size="sm"
                                 intent="alert-solid"
                             >
                                 {updateData?.length || pluginWithIssuesCount || 1}

@@ -1897,6 +1897,49 @@ export type AutoDownloader_SimulationResult = {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Autoselect
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/torrents/autoselect/autoselect.go
+ * - Filename: autoselect.go
+ * - Package: autoselect
+ */
+export type AutoSelectCandidate = {
+    name: string
+    provider: string
+    seeders: number
+    score: number
+    /**
+     * "waiting", "analyzing", "skipped", "selected"
+     */
+    status: string
+}
+
+/**
+ * - Filepath: internal/torrents/autoselect/autoselect.go
+ * - Filename: autoselect.go
+ * - Package: autoselect
+ */
+export type StreamAutoSelectStatusPayload = {
+    active: boolean
+    mediaTitle: string
+    episode: number
+    resolutions?: Array<string>
+    minSeeders: number
+    /**
+     * "searching", "ranking", "analyzing", "completed"
+     */
+    step: string
+    /**
+     * Description of the current action
+     */
+    stepDetail: string
+    candidates?: Array<AutoSelectCandidate>
+    selectedFile: string
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ChapterDownloader
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -3110,6 +3153,7 @@ export type HibikeTorrent_AnimeTorrentFile = {
     index: number
     path: string
     name: string
+    episodeNumber?: number
 }
 
 /**
@@ -3936,6 +3980,9 @@ export type Models_MediaPlayerSettings = {
     vcTranslateApiKey: string
     vcTranslateBaseUrl: string
     vcTranslateModel: string
+    mpvPrismLogging: boolean
+    mpvPrismEnabled: boolean
+    screenshotDir: string
 }
 
 /**
@@ -4138,10 +4185,136 @@ export type Models_TorrentstreamSettings = {
     streamUrlAddress: string
     slowSeeding: boolean
     preloadNextStream: boolean
+    disableAcceleratedStartup: boolean
     id: number
     createdAt?: string
     updatedAt?: string
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Mpvcore
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/mpvcore/types.go
+ * - Filename: types.go
+ * - Package: mpvcore
+ */
+export type MpvCore_ClientEventType = "playback-loaded" |
+    "loaded-metadata" |
+    "can-play" |
+    "paused" |
+    "resumed" |
+    "status" |
+    "seeked" |
+    "completed" |
+    "ended" |
+    "player-error" |
+    "terminated" |
+    "fullscreen-changed" |
+    "pip-changed" |
+    "audio-track-changed" |
+    "subtitle-track-changed" |
+    "playlist-state" |
+    "skip-data"
+
+/**
+ * - Filepath: internal/mpvcore/insight.go
+ * - Filename: insight.go
+ * - Package: mpvcore
+ */
+export type MpvCore_InSightCharacter = {
+    mal_id: number
+    url: string
+    images: MpvCore_InSightCharacter_Images
+    name: string
+    role: string
+    favorites: number
+}
+
+/**
+ * - Filepath: internal/mpvcore/insight.go
+ * - Filename: insight.go
+ * - Package: mpvcore
+ */
+export type MpvCore_InSightCharacterDetails = {
+    mal_id: number
+    url: string
+    images: MpvCore_InSightCharacterDetails_Images
+    name: string
+    name_kanji: string
+    nicknames?: Array<string>
+    favorites: number
+    about: string
+}
+
+/**
+ * - Filepath: internal/mpvcore/insight.go
+ * - Filename: insight.go
+ * - Package: mpvcore
+ */
+export type MpvCore_InSightCharacterDetails_Images = {
+    jpg: { image_url: string; }
+    webp: { image_url: string; small_image_url: string; }
+}
+
+/**
+ * - Filepath: internal/mpvcore/insight.go
+ * - Filename: insight.go
+ * - Package: mpvcore
+ */
+export type MpvCore_InSightCharacter_Images = {
+    jpg: { image_url: string; }
+    webp: { image_url: string; small_image_url: string; }
+}
+
+/**
+ * - Filepath: internal/mpvcore/insight.go
+ * - Filename: insight.go
+ * - Package: mpvcore
+ */
+export type MpvCore_InSightData = {
+    characters?: Array<MpvCore_InSightCharacter>
+    suggestions?: Array<MpvCore_InSightSegment>
+}
+
+/**
+ * - Filepath: internal/mpvcore/insight.go
+ * - Filename: insight.go
+ * - Package: mpvcore
+ */
+export type MpvCore_InSightSegment = {
+    characterId: number
+    startTime: number
+    endTime: number
+}
+
+/**
+ * - Filepath: internal/mpvcore/types.go
+ * - Filename: types.go
+ * - Package: mpvcore
+ */
+export type MpvCore_ServerEvent = "open-and-await" |
+    "abort-open" |
+    "watch" |
+    "stream-error" |
+    "pause" |
+    "resume" |
+    "seek" |
+    "seek-to" |
+    "terminate" |
+    "set-fullscreen" |
+    "set-pip" |
+    "set-audio-track" |
+    "set-subtitle-track" |
+    "add-subtitle-track" |
+    "show-message" |
+    "get-status" |
+    "get-playlist" |
+    "get-skip-data" |
+    "set-skip-data" |
+    "play-playlist-episode" |
+    "in-sight-data"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Nakama
@@ -4296,7 +4469,7 @@ export type Nakama_WatchPartySessionMediaInfo = {
      * Path to local file if StreamType is file
      */
     localFilePath: string
-    onlinestreamParams?: VideoCore_OnlinestreamParams
+    onlinestreamParams?: Player_OnlinestreamParams
     torrentStreamParams?: Torrentstream_StartStreamOptions
 }
 
@@ -4393,7 +4566,7 @@ export type NativePlayer_PlaybackInfo = {
      * nil if not ebml
      */
     mkvMetadata?: MKVParser_Metadata
-    subtitleTracks?: Array<VideoCore_VideoSubtitleTrack>
+    subtitleTracks?: Array<NativePlayer_VideoSubtitleTrack>
     /**
      * nil if not in list
      */
@@ -4425,6 +4598,25 @@ export type NativePlayer_ServerEvent = "open-and-await" |
  * - Package: nativeplayer
  */
 export type NativePlayer_StreamType = "torrent" | "localfile" | "debrid" | "url" | "nakama"
+
+/**
+ * - Filepath: internal/nativeplayer/nativeplayer.go
+ * - Filename: nativeplayer.go
+ * - Package: nativeplayer
+ */
+export type NativePlayer_VideoSubtitleTrack = {
+    index: number
+    src?: string
+    content?: string
+    label: string
+    language: string
+    /**
+     * "srt" | "vtt" | "ass" | "ssa"
+     */
+    type?: string
+    default?: boolean
+    useLibassRenderer?: boolean
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Onlinestream
@@ -4496,6 +4688,202 @@ export type Onlinestream_VideoSource = {
     quality: string
     type?: HibikeOnlinestream_VideoSourceType
     subtitles?: Array<Onlinestream_Subtitle>
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Player
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/player/types.go
+ * - Filename: types.go
+ * - Package: player
+ */
+export type Player_InitialState = {
+    currentTime?: number
+    paused?: boolean
+}
+
+/**
+ * - Filepath: internal/player/types.go
+ * - Filename: types.go
+ * - Package: player
+ */
+export type Player_LibassFont = {
+    name?: string
+    src: string
+}
+
+/**
+ * - Filepath: internal/player/types.go
+ * - Filename: types.go
+ * - Package: player
+ */
+export type Player_OnlinestreamParams = {
+    mediaId: number
+    episodeNumber: number
+    provider: string
+    server: string
+    quality: string
+    dubbed: boolean
+}
+
+/**
+ * - Filepath: internal/player/types.go
+ * - Filename: types.go
+ * - Package: player
+ */
+export type Player_PlaybackInfo = {
+    id: string
+    target: Player_Target
+    renderer: Player_Renderer
+    playbackType: Player_PlaybackType
+    playbackUri?: string
+    streamUrl: string
+    streamPath?: string
+    mimeType?: string
+    contentLength?: number
+    mkvMetadata?: MKVParser_Metadata
+    subtitleTracks?: Array<Player_SubtitleTrack>
+    videoSources?: Array<Player_VideoSource>
+    selectedVideoSource?: number
+    playlistExternalEpisodeNumbers?: Array<number>
+    disableRestoreFromContinuity?: boolean
+    initialState?: Player_InitialState
+    entryListData?: Anime_EntryListData
+    media?: AL_BaseAnime
+    episode?: Anime_Episode
+    localFile?: Anime_LocalFile
+    onlinestreamParams?: Player_OnlinestreamParams
+    isNakamaWatchParty?: boolean
+    streamType?: string
+    libassFonts?: Array<Player_LibassFont>
+}
+
+/**
+ * - Filepath: internal/player/types.go
+ * - Filename: types.go
+ * - Package: player
+ */
+export type Player_PlaybackState = {
+    clientId: string
+    playbackInfo?: Player_PlaybackInfo
+    playerType?: string
+    currentProgress?: number
+}
+
+/**
+ * - Filepath: internal/player/types.go
+ * - Filename: types.go
+ * - Package: player
+ */
+export type Player_PlaybackStatus = {
+    id: string
+    clientId: string
+    paused: boolean
+    currentTime: number
+    duration: number
+}
+
+/**
+ * - Filepath: internal/player/types.go
+ * - Filename: types.go
+ * - Package: player
+ */
+export type Player_PlaybackType = "localfile" |
+    "torrent" |
+    "debrid" |
+    "nakama" |
+    "onlinestream" |
+    "url"
+
+/**
+ * - Filepath: internal/player/types.go
+ * - Filename: types.go
+ * - Package: player
+ */
+export type Player_PlaylistState = {
+    type: Player_PlaybackType
+    episodes?: Array<Anime_Episode>
+    previousEpisode?: Anime_Episode
+    nextEpisode?: Anime_Episode
+    currentEpisode?: Anime_Episode
+    animeEntry?: Anime_Entry
+}
+
+/**
+ * - Filepath: internal/player/types.go
+ * - Filename: types.go
+ * - Package: player
+ */
+export type Player_Renderer = "web" | "native" | "mpv"
+
+/**
+ * - Filepath: internal/player/types.go
+ * - Filename: types.go
+ * - Package: player
+ */
+export type Player_SkipData = {
+    op?: Player_SkipDataEntry
+    ed?: Player_SkipDataEntry
+}
+
+/**
+ * - Filepath: internal/player/types.go
+ * - Filename: types.go
+ * - Package: player
+ */
+export type Player_SkipDataEntry = {
+    interval: Player_SkipInterval
+}
+
+/**
+ * - Filepath: internal/player/types.go
+ * - Filename: types.go
+ * - Package: player
+ */
+export type Player_SkipInterval = {
+    startTime: number
+    endTime: number
+}
+
+/**
+ * - Filepath: internal/player/types.go
+ * - Filename: types.go
+ * - Package: player
+ */
+export type Player_SubtitleTrack = {
+    index: number
+    uri?: string
+    sourceUrl?: string
+    content?: string
+    label: string
+    language: string
+    format?: string
+    default?: boolean
+    src?: string
+    type?: string
+    useLibassRenderer?: boolean
+}
+
+/**
+ * - Filepath: internal/player/types.go
+ * - Filename: types.go
+ * - Package: player
+ */
+export type Player_Target = "videocore" | "mpvcore"
+
+/**
+ * - Filepath: internal/player/types.go
+ * - Filename: types.go
+ * - Package: player
+ */
+export type Player_VideoSource = {
+    index: number
+    resolution: string
+    url?: string
+    label?: string
+    moreInfo?: string
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

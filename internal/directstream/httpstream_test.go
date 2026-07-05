@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"seanime/internal/mkvparser"
-	"seanime/internal/nativeplayer"
+	"seanime/internal/player"
 	"seanime/internal/util"
 	"seanime/internal/util/result"
 
@@ -79,7 +79,7 @@ func TestNakamaGetStreamHandlerPreservesHeadResponseToken(t *testing.T) {
 
 	manager := newHTTPStreamTestManager()
 	stream := newTestNakamaStream(manager, server.URL+"/video.mp4", token)
-	stream.playbackInfo = &nativeplayer.PlaybackInfo{MkvMetadataParser: mo.None[*mkvparser.MetadataParser]()}
+	stream.playbackInfo = &player.PlaybackInfo{MkvMetadataParser: mo.None[*mkvparser.MetadataParser]()}
 
 	require.Equal(t, "video/mp4", stream.LoadContentType())
 
@@ -120,7 +120,7 @@ func TestNakamaGetStreamHandlerProxiesWithSharedRequestHeaders(t *testing.T) {
 
 	manager := newHTTPStreamTestManager()
 	stream := newTestNakamaStream(manager, server.URL+"/video.mp4", token)
-	stream.playbackInfo = &nativeplayer.PlaybackInfo{MkvMetadataParser: mo.None[*mkvparser.MetadataParser]()}
+	stream.playbackInfo = &player.PlaybackInfo{MkvMetadataParser: mo.None[*mkvparser.MetadataParser]()}
 
 	require.Equal(t, "video/mp4", stream.LoadContentType())
 

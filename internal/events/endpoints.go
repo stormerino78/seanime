@@ -167,6 +167,7 @@ const (
 	MangaManualSearchEndpoint                          = "MANGA-manga-manual-search"
 	MediastreamLocalSubtitlesEndpoint                  = "MEDIASTREAM-mediastream-local-subtitles"
 	MediastreamShutdownTranscodeStreamEndpoint         = "MEDIASTREAM-mediastream-shutdown-transcode-stream"
+	MpvCoreInSightGetCharacterDetailsEndpoint          = "MPVCORE-mpv-core-in-sight-get-character-details"
 	NakamaCreateAndJoinRoomEndpoint                    = "NAKAMA-nakama-create-and-join-room"
 	NakamaCreateWatchPartyEndpoint                     = "NAKAMA-nakama-create-watch-party"
 	NakamaDisconnectFromRoomEndpoint                   = "NAKAMA-nakama-disconnect-from-room"
@@ -259,4 +260,5 @@ const (
 	UpdatePlaylistEndpoint                             = "PLAYLIST-update-playlist"
 	UpdateThemeEndpoint                                = "THEME-update-theme"
 	VideoCoreInSightGetCharacterDetailsEndpoint        = "VIDEOCORE-video-core-in-sight-get-character-details"
+	VideoCoreSaveScreenshotEndpoint                    = "VIDEOCORE-video-core-save-screenshot"
 )

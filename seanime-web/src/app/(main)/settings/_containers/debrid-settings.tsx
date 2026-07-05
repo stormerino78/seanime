@@ -90,7 +90,7 @@ export function DebridSettings(props: DebridSettingsProps) {
                     streamAutoSelect: settings?.streamAutoSelect ?? false,
                     streamPreferredResolution: settings?.streamPreferredResolution || "-",
                 }}
-                stackClass="space-y-4"
+                stackClass="space-y-8"
             >
                 {(f) => (
                     <>
@@ -116,13 +116,14 @@ export function DebridSettings(props: DebridSettingsProps) {
                         </SettingsCard>
 
 
-                        <SettingsCard>
+                        <SettingsCard title="Provider">
                             <Field.Select
                                 options={[
                                     { label: "None", value: "-" },
                                     { label: "TorBox", value: "torbox" },
                                     { label: "Real-Debrid", value: "realdebrid" },
                                     { label: "AllDebrid", value: "alldebrid" },
+                                    { label: "Premiumize", value: "premiumize" },
                                 ]}
                                 name="provider"
                                 label="Provider"

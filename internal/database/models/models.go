@@ -202,6 +202,9 @@ type MediaPlayerSettings struct {
 	VcTranslateApiKey         string `gorm:"column:vc_translate_api_key" json:"vcTranslateApiKey"`
 	VcTranslateBaseUrl        string `gorm:"column:vc_translate_base_url" json:"vcTranslateBaseUrl"`
 	VcTranslateModel          string `gorm:"column:vc_translate_model" json:"vcTranslateModel"`
+	MpvPrismLogging           bool   `gorm:"column:mpv_prism_logging" json:"mpvPrismLogging"`
+	MpvPrismEnabled           bool   `gorm:"column:mpv_prism_enabled" json:"mpvPrismEnabled"`
+	ScreenshotDir             string `gorm:"column:screenshot_dir" json:"screenshotDir"`
 }
 
 type TorrentSettings struct {
@@ -498,7 +501,8 @@ type TorrentstreamSettings struct {
 	// v2.7+
 	SlowSeeding bool `gorm:"column:slow_seeding" json:"slowSeeding"`
 	// v3+
-	PreloadNextStream bool `gorm:"column:preload_next_stream" json:"preloadNextStream"`
+	PreloadNextStream         bool `gorm:"column:preload_next_stream" json:"preloadNextStream"`
+	DisableAcceleratedStartup bool `gorm:"column:disable_accelerated_startup" json:"disableAcceleratedStartup"`
 }
 
 // TorrentstreamHistory used by both torrent streaming and debrid streaming to store the last selected batch that was used for each media.
@@ -573,6 +577,16 @@ type DebridTorrentItem struct {
 	Destination   string `gorm:"column:destination" json:"destination"`
 	Provider      string `gorm:"column:provider" json:"provider"`
 	MediaId       int    `gorm:"column:media_id" json:"mediaId"`
+}
+
+// DebridTransferHash persists the info hash a debrid provider transfer was created from.
+// Some providers (e.g. Premiumize) never expose a transfer's info hash via their own API,
+// so this is the only way to recover the hash <-> transfer id mapping across restarts.
+type DebridTransferHash struct {
+	BaseModel
+	Provider   string `gorm:"column:provider;uniqueIndex:idx_debrid_transfer_hash" json:"provider"`
+	TransferID string `gorm:"column:transfer_id;uniqueIndex:idx_debrid_transfer_hash" json:"transferId"`
+	Hash       string `gorm:"column:hash;index" json:"hash"`
 }
 
 // +---------------------+

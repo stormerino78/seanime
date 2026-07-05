@@ -1520,6 +1520,13 @@ export const API_ENDPOINTS = {
             endpoint: "/api/v1/metadata/parent",
         },
     },
+    MPVCORE: {
+        MpvCoreInSightGetCharacterDetails: {
+            key: "MPVCORE-mpv-core-in-sight-get-character-details",
+            methods: ["GET"],
+            endpoint: "/api/v1/mpvcore/insight/character/{malId}",
+        },
+    },
     NAKAMA: {
         /**
          *  @description
@@ -2345,6 +2352,11 @@ export const API_ENDPOINTS = {
             key: "VIDEOCORE-video-core-in-sight-get-character-details",
             methods: ["GET"],
             endpoint: "/api/v1/videocore/insight/character/{malId}",
+        },
+        VideoCoreSaveScreenshot: {
+            key: "VIDEOCORE-video-core-save-screenshot",
+            methods: ["POST"],
+            endpoint: "/api/v1/videocore/screenshot",
         },
     },
 } satisfies ApiEndpoints
